@@ -1,7 +1,23 @@
 "use strict";
-/* ================= REAL AI (Mistral Large via /api/chat) ================= */
+/* ================= REAL AI (via /api/chat) ================= */
 let chatHistory = [];
 function resetChat() { chatHistory = []; }
+
+/* Active model: "mistral" (Mistral Large) or "mnai" (MNAI 8 Pro) */
+let activeModel = "mistral";
+try { const saved = localStorage.getItem("pplx_model"); if (saved && MODELS.some(m => m.key === saved)) activeModel = saved; } catch (e) {}
+function setActiveModel(key) {
+  if (!MODELS.some(m => m.key === key)) return;
+  activeModel = key;
+  try { localStorage.setItem("pplx_model", key); } catch (e) {}
+  updateModelUI();
+}
+function updateModelUI() {
+  const meta = MODELS.find(m => m.key === activeModel) || MODELS[0];
+  $$("[data-model-label]").forEach(s => { s.textContent = meta.name; });
+  $$("[data-model-logo]").forEach(im => { im.src = meta.logo; });
+  if (typeof composers !== "undefined") composers.forEach(c => { c.model = meta.name; });
+}
 
 function mdInline(s) {
   return s
@@ -41,12 +57,12 @@ function mdToHtml(md) {
 }
 
 /* Streams an answer from /api/chat into bodyEl; hides statusEl on first token. */
-async function streamAnswer(messages, bodyEl, statusEl, onDone, onError) {
+async function streamAnswer(messages, modelKey, bodyEl, statusEl, onDone, onError) {
   try {
     const res = await fetch("/api/chat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ messages, stream: true }),
+      body: JSON.stringify({ messages, model: modelKey, stream: true }),
     });
     if (!res.ok || !res.body) {
       let msg = "The AI service returned an error. Please try again.";
