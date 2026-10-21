@@ -96,20 +96,35 @@ function openModal(html,dialogCls=""){
 }
 const xBtn=`<button class="x" data-close aria-label="Close">${icon("x","ic sm")}</button>`;
 
-/* ================= AUTH ================= */
+/* ================= AUTH (real Firebase — project meowsamopdzn-ais) ================= */
+const FB_CONFIG={apiKey:"AIzaSyA2JibgDeBwz-9rUVMFX1kW7lk0kJVIstE",authDomain:"meowsamopdzn-ais.firebaseapp.com",projectId:"meowsamopdzn-ais",storageBucket:"meowsamopdzn-ais.firebasestorage.app",messagingSenderId:"595814101069",appId:"1:595814101069:web:2d356073f8828261172c04",measurementId:"G-BR9PSL1JQ1"};
+let fbAuth=null;
+try{
+  if(typeof firebase!=="undefined"&&firebase.initializeApp){
+    firebase.initializeApp(FB_CONFIG);
+    fbAuth=firebase.auth();
+    fbAuth.onAuthStateChanged(u=>{
+      if(u){const was=state.user&&state.user.email===u.email;state.user={name:u.displayName||(u.email||"User").split("@")[0],email:u.email||"",fb:true};save();updateAuthUI();if(!was)toast("Signed in as "+state.user.name)}
+      else if(state.user&&state.user.fb){state.user=null;save();updateAuthUI()}
+    });
+  }
+}catch(e){fbAuth=null}
+function fbReady(){return !!fbAuth}
+function fbSignOut(){if(fbReady()&&state.user&&state.user.fb)return fbAuth.signOut();state.user=null;save();updateAuthUI();return Promise.resolve()}
+
 function updateAuthUI(){
   const u=state.user;
   $("#signInBtn").hidden=!!u;$("#userBtn").hidden=!u;
   $("#computerSignIn").hidden=!!u;
+  const sg=$("#suggestGrid");if(sg)sg.hidden=!!u;
   const ms=$("#mSignInBtn"),mu=$("#mUserBtn");
   if(ms)ms.hidden=!!u;
   if(mu){mu.hidden=!u;if(u)$(".avatar",mu).textContent=(u.name||"S").slice(0,1).toUpperCase()}
   if(u){$("#userAvatar").textContent=(u.name||"S").slice(0,1).toUpperCase();$("#userName").textContent=u.name;$("#userPlan").textContent=state.plan+" plan"}
 }
 function doSignIn(name,email){
-  state.user={name:name||"Sam",email:email||"sam@gmail.com"};save();updateAuthUI();closeModal();
+  state.user={name:name||"Sam",email:email||"sam@gmail.com",demo:true};save();updateAuthUI();closeModal();
   toast("Signed in as "+state.user.name);
-  $$("[data-composer]").forEach(()=>{});
 }
 function requireAuth(variant){if(signedIn())return true;loginModal(variant);return false}
 function loginModal(variant="default"){
@@ -123,16 +138,41 @@ function loginModal(variant="default"){
     <button class="btn light block" id="lgApple"><span style="font-size:16px"></span> Continue with Apple</button>
     <div class="login-or">or</div>
     <input class="field" id="lgEmail" type="email" placeholder="Enter your email" autocomplete="email">
+    <input class="field" id="lgPass" type="password" placeholder="Password" autocomplete="current-password">
     <button class="btn teal block" id="lgContinue" disabled>Continue with email</button>
+    <p class="sub" style="margin:2px 0 0;font-size:12px">New here? Continuing creates your account.</p>
   </div>
   <a href="#" class="sso-link" id="lgSso">Single sign-on (SSO)</a>
   ${V.close?`<button class="login-close-txt" data-close>Close</button>`:""}`,"login-dialog");
-  const email=$("#lgEmail",ov),cont=$("#lgContinue",ov);
-  email.addEventListener("input",()=>{cont.disabled=!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email.value.trim())});
-  email.addEventListener("keydown",e=>{if(e.key==="Enter"&&!cont.disabled)cont.click()});
-  cont.addEventListener("click",()=>{const em=email.value.trim();doSignIn(em.split("@")[0].replace(/^\w/,c=>c.toUpperCase()),em)});
-  $("#lgGoogle",ov).addEventListener("click",()=>doSignIn("Sam","sam@gmail.com"));
-  $("#lgApple",ov).addEventListener("click",()=>doSignIn("Sam","sam@icloud.com"));
+  const email=$("#lgEmail",ov),pass=$("#lgPass",ov),cont=$("#lgContinue",ov);
+  const validate=()=>{cont.disabled=!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email.value.trim())||pass.value.length<1};
+  email.addEventListener("input",validate);pass.addEventListener("input",validate);
+  pass.addEventListener("keydown",e=>{if(e.key==="Enter"&&!cont.disabled)cont.click()});
+  cont.addEventListener("click",async()=>{
+    const em=email.value.trim(),pw=pass.value;
+    if(!fbReady())return doSignIn(em.split("@")[0].replace(/^\w/,c=>c.toUpperCase()),em);
+    cont.disabled=true;cont.textContent="Continuing…";
+    try{await fbAuth.signInWithEmailAndPassword(em,pw);closeModal()}
+    catch(err){
+      if(err.code==="auth/user-not-found"||err.code==="auth/invalid-credential"||err.code==="auth/invalid-login-credentials"){
+        try{await fbAuth.createUserWithEmailAndPassword(em,pw);closeModal();return}
+        catch(e2){err=e2}
+      }
+      if(err.code==="auth/operation-not-allowed"||err.code==="auth/configuration-not-found"){
+        doSignIn(em.split("@")[0].replace(/^\w/,c=>c.toUpperCase()),em);
+        toast("Demo sign-in — enable Email/Password in Firebase for real accounts");
+        return;
+      }
+      cont.disabled=false;cont.textContent="Continue with email";
+      toast(err.code==="auth/wrong-password"?"Wrong password — try again":(err.code==="auth/weak-password"?"Password needs at least 6 characters":"Sign-in failed: "+(err.message||err.code)));
+    }
+  });
+  $("#lgGoogle",ov).addEventListener("click",async()=>{
+    if(!fbReady())return doSignIn("Sam","sam@gmail.com");
+    try{await fbAuth.signInWithPopup(new firebase.auth.GoogleAuthProvider());closeModal()}
+    catch(err){toast(err.code==="auth/unauthorized-domain"?"This domain isn't authorized in Firebase yet":(err.code==="auth/operation-not-allowed"?"Google sign-in isn't enabled in Firebase yet":"Google sign-in failed — try email instead"))}
+  });
+  $("#lgApple",ov).addEventListener("click",()=>toast("Apple sign-in isn't enabled on this project — use Google or email"));
   $("#lgSso",ov).addEventListener("click",e=>{e.preventDefault();email.placeholder="Enter your work email for SSO";email.focus();toast("Enter your work email to continue with SSO")});
 }
 
@@ -175,27 +215,73 @@ function composerHTML(ctx){
     <textarea rows="1" placeholder="${PLACEHOLDERS[0]}" aria-label="Ask anything"></textarea>
     <div class="composer-row">
       <button class="cbtn icon-only" data-act="add" data-tip="Add files or tools" aria-label="Add files or tools">${icon("plus")}</button>
-      <button class="cbtn" data-act="mode"><span class="cbtn-label" data-mode-label>Search</span>${icon("chevd","ic sm chev")}</button>
-      <button class="cbtn" data-act="computer" aria-pressed="${ctx==="computer"?"true":"false"}">${icon("monitor","ic sm")}<span class="cbtn-label">Computer</span></button>
+      <div class="seg" role="group" aria-label="Search mode">
+        <button class="seg-btn" data-act="mode">${icon("search","ic sm")}<span data-mode-label>Search</span>${icon("chevd","ic sm chev")}</button>
+        <button class="seg-btn" data-act="computer" aria-pressed="false">${icon("monitor","ic sm")}<span>Computer</span><span class="seg-chev" hidden>${icon("chevd","ic sm chev")}</span></button>
+      </div>
       <span class="sp"></span>
       ${ctx==="computer"?`<button class="cbtn" data-act="standard"><span class="cbtn-label">Standard</span>${icon("chevd","ic sm chev")}</button>`:""}
+      <button class="cbtn effort-btn" data-act="effort" hidden>${icon("tune","ic sm")}<span data-effort-label>Light</span>${icon("chevd","ic sm chev")}</button>
       <button class="cbtn" data-act="model"><img class="model-logo" data-model-logo src="logos/mistral-ai-icon.svg" alt=""><span class="cbtn-label" data-model-label>Mistral Large</span>${icon("chevd","ic sm chev")}</button>
       <button class="cbtn icon-only" data-act="mic" data-tip="Dictation" aria-label="Dictation">${icon("mic")}</button>
       <button class="voice-btn" data-act="voice" data-tip="Use voice mode" aria-label="Use voice mode">${icon("wave","ic sm")}</button>
       <button class="submit-btn" data-act="submit" aria-label="Submit" hidden>${icon("up","ic sm")}</button>
-    </div></div>`;
+    </div></div>
+  <div class="composer-foot" hidden>
+    <button data-foot="project">${icon("folder","ic sm")} Work in a project</button>
+    <span class="sp"></span>
+    <button data-foot="connect">${icon("hex","ic sm")} Connect an app</button>
+    <span class="sp"></span>
+    <button data-foot="desktop">${icon("monitor","ic sm")} Use desktop app</button>
+  </div>`;
+}
+function setComputerMode(c,on){
+  c.computer=on;
+  const segBtn=$('[data-act="computer"]',c.root);
+  segBtn.classList.toggle("on",on);segBtn.setAttribute("aria-pressed",String(on));
+  const ch=$(".seg-chev",segBtn);if(ch)ch.hidden=!on;
+  c.root.classList.toggle("computer-mode",on);
+  if(c.foot)c.foot.hidden=!on;
+  const eff=$('[data-act="effort"]',c.root);if(eff)eff.hidden=!on;
+  c.ta.placeholder=on?"Do anything…":PLACEHOLDERS[phIdx];
+}
+function effortMenu(c,anchor){
+  openMenu(anchor,el=>{
+    el.innerHTML=["Light","Standard","Thorough"].map(e=>`<button class="menu-item" data-e="${e}"><span class="grow">${e}${e==="Light"?'<br><span class="sub">Fast, everyday work</span>':e==="Standard"?'<br><span class="sub">Deeper research and drafting</span>':'<br><span class="sub">Maximum depth, slowest</span>'}</span>${c.effort===e?checkTail():(e==="Light"?"":lockTail())}</button>`).join("");
+    $$("[data-e]",el).forEach(b=>b.addEventListener("click",()=>{
+      if(b.dataset.e!=="Light"&&!(signedIn()&&state.plan!=="Free")){closeMenu();return signedIn()?plansModal():loginModal()}
+      c.effort=b.dataset.e;$("[data-effort-label]",c.root).textContent=c.effort;closeMenu();
+    }));
+  },{width:250,align:"right"});
 }
 function buildComposers(){
   $$("[data-composer]").forEach(host=>{
     const ctx=host.dataset.composer;
     host.innerHTML=composerHTML(ctx);
     const root=$(".composer",host),ta=$("textarea",root);
-    const c={ctx,root,ta,mode:"Search",model:"Mistral Large",computer:ctx==="computer",standard:"Standard",attachments:[]};
-    if(c.computer)$('[data-act="computer"]',root).classList.add("pressed");
+    const c={ctx,root,ta,foot:$(".composer-foot",host),mode:"Search",model:"Mistral Large",computer:false,standard:"Standard",effort:"Light",attachments:[]};
     composers.push(c);
+    if(ctx==="computer")setComputerMode(c,true);
     ta.addEventListener("input",()=>syncComposer(c,true));
     ta.addEventListener("keydown",e=>{
       if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();submitComposer(c)}
+    });
+    ta.addEventListener("paste",e=>{
+      const cd=e.clipboardData;if(!cd)return;
+      const files=[...(cd.files||[])];
+      if(files.length){e.preventDefault();intakeFiles(c,files);return}
+      const text=cd.getData("text")||"";
+      const words=text.trim()?text.trim().split(/\s+/).length:0;
+      if(words>500){e.preventDefault();c.attachments.push({kind:"text",name:"pasted-text.txt",text});renderAttach(c);toast("That paste was "+words+" words — added as pasted-text.txt")}
+    });
+    root.addEventListener("dragover",e=>{e.preventDefault();root.classList.add("drag-over")});
+    root.addEventListener("dragleave",e=>{if(!root.contains(e.relatedTarget))root.classList.remove("drag-over")});
+    root.addEventListener("drop",e=>{e.preventDefault();root.classList.remove("drag-over");if(e.dataTransfer&&e.dataTransfer.files&&e.dataTransfer.files.length)intakeFiles(c,e.dataTransfer.files)});
+    if(c.foot)c.foot.addEventListener("click",e=>{
+      const b=e.target.closest("[data-foot]");if(!b)return;
+      if(b.dataset.foot==="project"){if(!state.projects.length)return toast("No projects yet — create one from the sidebar");toast("Working in project “"+state.projects[0].name+"”")}
+      else if(b.dataset.foot==="connect")showView("customize");
+      else if(b.dataset.foot==="desktop")openModal(`${xBtn}<h2>Computer on desktop</h2><p class="sub">This replica runs Computer fully in your browser — sessions, files and deliverables work the same here, no desktop app needed.</p><button class="btn black block" data-close>Got it</button>`,"form-dialog");
     });
     root.addEventListener("click",e=>{
       const btn=e.target.closest("[data-act]");if(!btn)return;
@@ -204,17 +290,19 @@ function buildComposers(){
       else if(act==="mode")modeMenu(c,btn);
       else if(act==="model")modelMenu(c,btn);
       else if(act==="standard")standardMenu(c,btn);
-      else if(act==="computer"){c.computer=!c.computer;btn.classList.toggle("pressed",c.computer);btn.setAttribute("aria-pressed",c.computer)}
+      else if(act==="effort")effortMenu(c,btn);
+      else if(act==="computer")setComputerMode(c,!c.computer);
       else if(act==="mic")dictate(c,btn);
       else if(act==="voice")voiceMode();
       else if(act==="submit")submitComposer(c);
     });
   });
-  setInterval(()=>{phIdx=(phIdx+1)%PLACEHOLDERS.length;composers.forEach(c=>{if(!c.ta.value)c.ta.placeholder=PLACEHOLDERS[phIdx]})},3000);
+  if(!window.__pplxDnD){window.__pplxDnD=1;window.addEventListener("dragover",e=>e.preventDefault());window.addEventListener("drop",e=>e.preventDefault())}
+  setInterval(()=>{phIdx=(phIdx+1)%PLACEHOLDERS.length;composers.forEach(c=>{if(!c.ta.value&&!c.computer)c.ta.placeholder=PLACEHOLDERS[phIdx]})},3000);
 }
 function syncComposer(c,fromInput){
   const ta=c.ta;ta.style.height="auto";ta.style.height=Math.min(ta.scrollHeight,150)+"px";
-  const has=ta.value.trim().length>0;
+  const has=ta.value.trim().length>0||c.attachments.length>0;
   $('[data-act="voice"]',c.root).hidden=has;
   $('[data-act="submit"]',c.root).hidden=!has;
   if(fromInput){
@@ -224,16 +312,65 @@ function syncComposer(c,fromInput){
   }
 }
 function submitComposer(c){
-  const q=c.ta.value.trim();if(!q)return;
+  const q=c.ta.value.trim();const atts=c.attachments.slice();
+  if(!q&&!atts.length)return;
   c.ta.value="";c.attachments=[];renderAttach(c);syncComposer(c);
-  if(c.ctx==="computer")return doComputerSession(q,c.standard);
+  if(c.ctx==="computer")return doComputerSession(q||"Work on the attached files",c.standard);
   if(c.ctx==="automation")return openAutomationModal({prompt:q});
-  doSearch(q);
+  doSearch(q,atts);
 }
 function renderAttach(c){
   const row=$(".attach-row",c.root);
-  row.innerHTML=c.attachments.map((a,i)=>`<span class="attach-chip">${icon("file","ic sm")} ${esc(a)} <button data-att="${i}" aria-label="Remove attachment">${icon("x","ic sm")}</button></span>`).join("");
+  row.innerHTML=c.attachments.map((a,i)=>a.kind==="image"
+    ?`<span class="attach-chip img"><img class="att-thumb" src="${a.dataUrl}" alt=""> ${esc(a.name)} <button data-att="${i}" aria-label="Remove attachment">${icon("x","ic sm")}</button></span>`
+    :`<span class="attach-chip">${icon("file","ic sm")} ${esc(a.name)} <button data-att="${i}" aria-label="Remove attachment">${icon("x","ic sm")}</button></span>`).join("");
   $$("[data-att]",row).forEach(b=>b.addEventListener("click",()=>{c.attachments.splice(+b.dataset.att,1);renderAttach(c)}));
+  syncComposer(c);
+}
+/* ---- attachment intake: picker, drag & drop, paste ---- */
+function readImageFile(f,cb){
+  let settled=false;const done=att=>{if(!settled){settled=true;cb(att)}};
+  const fallback=()=>{
+    if(!f.arrayBuffer)return toast("Couldn't read that image");
+    f.arrayBuffer().then(buf=>{
+      let bin="";const bytes=new Uint8Array(buf);
+      for(let i=0;i<bytes.length;i+=32768)bin+=String.fromCharCode.apply(null,bytes.subarray(i,i+32768));
+      done({kind:"image",name:f.name,dataUrl:"data:"+(f.type||"image/png")+";base64,"+btoa(bin)});
+    }).catch(()=>toast("Couldn't read that image"));
+  };
+  try{
+    const rd=new FileReader();
+    rd.onload=()=>{
+      const dataUrl=rd.result;
+      const timer=setTimeout(()=>done({kind:"image",name:f.name,dataUrl}),1600);
+      const img=new Image();
+      img.onload=()=>{clearTimeout(timer);
+        const max=1280,sc=Math.min(1,max/Math.max(img.width||1,img.height||1));
+        if(sc>=1||!img.width)return done({kind:"image",name:f.name,dataUrl});
+        try{
+          const cv=document.createElement("canvas");cv.width=Math.round(img.width*sc);cv.height=Math.round(img.height*sc);
+          cv.getContext("2d").drawImage(img,0,0,cv.width,cv.height);
+          done({kind:"image",name:f.name,dataUrl:cv.toDataURL("image/jpeg",0.85)});
+        }catch(e){done({kind:"image",name:f.name,dataUrl})}
+      };
+      img.onerror=()=>{clearTimeout(timer);done({kind:"image",name:f.name,dataUrl})};
+      img.src=dataUrl;
+    };
+    rd.onerror=()=>fallback();
+    rd.readAsDataURL(f);
+  }catch(e){fallback()}
+}
+function intakeFiles(c,files){
+  [...files].forEach(f=>{
+    if(f.size>10*1024*1024)return toast("“"+f.name+"” is over 10 MB — skipped");
+    if(f.type&&f.type.startsWith("image/")){readImageFile(f,att=>{c.attachments.push(att);renderAttach(c)});return}
+    if((f.type&&f.type.startsWith("text/"))||/\.(txt|md|json|csv|log|js|ts|py|html|css|xml)$/i.test(f.name)){
+      if(f.text)f.text().then(t=>{c.attachments.push({kind:"text",name:f.name,text:t.slice(0,30000)});renderAttach(c)}).catch(()=>{c.attachments.push({kind:"file",name:f.name});renderAttach(c)});
+      else{c.attachments.push({kind:"file",name:f.name});renderAttach(c)}
+      return;
+    }
+    c.attachments.push({kind:"file",name:f.name});renderAttach(c);
+  });
 }
 /* ---- composer menus ---- */
 function addMenu(c,anchor){
@@ -308,7 +445,7 @@ function standardMenu(c,anchor){
 }
 let pendingComposer=null;
 $("#filePicker").addEventListener("change",e=>{
-  if(pendingComposer){[...e.target.files].forEach(f=>{pendingComposer.attachments.push(f.name);state.artifacts.unshift({name:f.name,type:"Documents",kind:"uploaded",when:"Just now"})});save();if(typeof renderArtifacts==="function")renderArtifacts();renderAttach(pendingComposer);pendingComposer.ta.focus();pendingComposer=null}
+  if(pendingComposer){const files=[...e.target.files];files.forEach(f=>{state.artifacts.unshift({name:f.name,type:"Documents",kind:"uploaded",when:"Just now"})});save();if(typeof renderArtifacts==="function")renderArtifacts();intakeFiles(pendingComposer,files);pendingComposer.ta.focus();pendingComposer=null}
   e.target.value="";
 });
 /* ---- dictation & voice ---- */
