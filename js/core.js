@@ -15,7 +15,9 @@ function save(){try{localStorage.setItem(LS_KEY,JSON.stringify(state))}catch(e){
 const signedIn=()=>!!state.user;
 
 /* ================= DATA ================= */
-const MODELS=[{name:"Mistral Large",id:"mistralai/mistral-large-4-0",logo:true}];
+const MODELS=[
+ {key:"mistral",name:"Mistral Large",logo:"logos/mistral-ai-icon.svg",sub:"mistralai/mistral-large-4-0 · Real AI"},
+ {key:"mnai",name:"MNAI 8 Pro",logo:"logos/mnai-ai-icon.svg",sub:"Flagship · Real AI"}];
 const OUTLETS=[["reuters","#e0651f","R"],["apnews","#1a1a1a","A"],["bbc.com","#a31621","B"],["cnn","#c00","C"],["theverge","#5200ff","V"],["techcrunch","#0a7d33","T"],["bloomberg","#2800d7","B"],["nature","#0b5d4e","N"],["wikipedia","#333","W"],["nytimes","#111","N"]];
 const STORIES=[
  {id:"s1",cat:"Top",title:"Kremlin says Putin open to new three-way Ukraine talks",summary:"Moscow signalled openness to a fresh round of three-way negotiations, even as both sides publicly hold firm on the territorial questions that have stalled every previous round.",sources:21,time:"2 hours ago",seed:"kyiv-talk",outlets:[0,1,3],sec:["Envoys bring new ideas to the table","The two sides remain far apart"]},
@@ -177,7 +179,7 @@ function composerHTML(ctx){
       <button class="cbtn" data-act="computer" aria-pressed="${ctx==="computer"?"true":"false"}">${icon("monitor","ic sm")}<span class="cbtn-label">Computer</span></button>
       <span class="sp"></span>
       ${ctx==="computer"?`<button class="cbtn" data-act="standard"><span class="cbtn-label">Standard</span>${icon("chevd","ic sm chev")}</button>`:""}
-      <button class="cbtn" data-act="model">${icon("mistral","ic sm")}<span class="cbtn-label" data-model-label>Mistral Large</span>${icon("chevd","ic sm chev")}</button>
+      <button class="cbtn" data-act="model"><img class="model-logo" data-model-logo src="logos/mistral-ai-icon.svg" alt=""><span class="cbtn-label" data-model-label>Mistral Large</span>${icon("chevd","ic sm chev")}</button>
       <button class="cbtn icon-only" data-act="mic" data-tip="Dictation" aria-label="Dictation">${icon("mic")}</button>
       <button class="voice-btn" data-act="voice" data-tip="Use voice mode" aria-label="Use voice mode">${icon("wave","ic sm")}</button>
       <button class="submit-btn" data-act="submit" aria-label="Submit" hidden>${icon("up","ic sm")}</button>
@@ -287,10 +289,10 @@ function modeMenu(c,anchor){
 }
 function modelMenu(c,anchor){
   openMenu(anchor,el=>{
-    el.innerHTML=`<div class="menu-head">Model</div>
-     <button class="menu-item" data-model="Mistral Large">${icon("mistral")}<span class="grow">Mistral Large<br><span class="sub">mistralai/mistral-large-4-0 · Real AI</span></span>${checkTail()}</button>
-     <div class="menu-sep"></div><div class="menu-head" style="font-weight:400">Answers are generated live by Mistral Large.</div>`;
-    $("[data-model]",el).addEventListener("click",()=>{c.model="Mistral Large";closeMenu();c.ta.focus()});
+    el.innerHTML=`<div class="menu-head">Model</div>`+
+     MODELS.map(m=>`<button class="menu-item" data-model="${m.key}"><img class="model-logo" src="${m.logo}" alt=""><span class="grow">${m.name}<br><span class="sub">${m.sub}</span></span>${typeof activeModel!=="undefined"&&activeModel===m.key?checkTail():""}</button>`).join("")+
+     `<div class="menu-sep"></div><div class="menu-head" style="font-weight:400">Answers are generated live by the selected model.</div>`;
+    $$("[data-model]",el).forEach(b=>b.addEventListener("click",()=>{setActiveModel(b.dataset.model);closeMenu();toast("Model set to "+(MODELS.find(m=>m.key===b.dataset.model)||{}).name);c.ta.focus()}));
   },{width:290,align:"right"});
 }
 function standardMenu(c,anchor){
