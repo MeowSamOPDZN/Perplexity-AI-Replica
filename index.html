@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Perplexity</title>
 <meta name="description" content="Perplexity AI Replica — a fully interactive front-end replica of perplexity.ai: AI search with cited answers, Discover feed, Computer, Automations, Artifacts and Connectors.">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M16 3v26M5 10l22 12M27 10L5 22M16 3l11 7-11 5L5 10z' stroke='%2320808d' stroke-width='2.4' fill='none'/%3E%3C/svg%3E">
+<link rel="icon" type="image/svg+xml" href="logos/perplexity.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&display=swap" rel="stylesheet">
@@ -16,6 +16,9 @@
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
 <defs>
+<symbol id="i-thumb" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.3a2 2 0 0 0 2-1.7l1.2-8a2 2 0 0 0-2-2.3H14z"/><path d="M7 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h3"/></g></symbol>
+<symbol id="i-thumbd" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H6.7a2 2 0 0 0-2 1.7l-1.2 8a2 2 0 0 0 2 2.3H10z"/><path d="M17 2h3a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-3"/></g></symbol>
+<symbol id="i-branch" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="6" cy="6" r="2.6"/><circle cx="6" cy="18" r="2.6"/><circle cx="18" cy="8" r="2.6"/><path d="M6 8.6v6.8M18 10.6c0 4.2-4.8 4.6-9 5.2"/></g></symbol>
 <symbol id="i-logo" viewBox="0 0 32 32"><g fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"><path d="M16 3v26"/><path d="M4.5 10.5L16 16l11.5-5.5L16 3z"/><path d="M4.5 10.5V22L16 16l11.5 6V10.5"/><path d="M4.5 22L16 29l11.5-7"/></g></symbol>
 <symbol id="i-search" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.8-3.8"/></g></symbol>
 <symbol id="i-panel" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="3" y="4" width="18" height="16" rx="2.5"/><path d="M9.5 4v16"/></g></symbol>
@@ -63,7 +66,7 @@
 
 
 <header id="mobileBar">
-  <a class="logo-link" href="#" id="mLogo"><svg class="ic lg" style="color:var(--teal-dark)"><use href="#i-logo"/></svg><span style="font-family:var(--font-display);font-size:19px;font-weight:600">Perplexity</span></a>
+  <a class="logo-link" href="#" id="mLogo"><img class="logo-img" src="logos/perplexity.svg" alt="Perplexity"><span style="font-family:var(--font-display);font-size:19px;font-weight:600">Perplexity</span></a>
   <span style="flex:1"></span>
   <button class="icon-btn" id="mPaletteBtn" aria-label="Search sessions"><svg class="ic"><use href="#i-search"/></svg></button>
   <button class="icon-btn" id="mIncognitoBtn" aria-label="Use incognito"><svg class="ic"><use href="#i-incog"/></svg></button>
@@ -77,7 +80,7 @@
   <aside id="sidebar">
     <div class="sb-head">
       <a class="logo-link" href="#" id="logoLink" aria-label="Perplexity home">
-        <svg class="ic lg" style="color:var(--teal-dark)"><use href="#i-logo"/></svg>
+        <img class="logo-img" src="logos/perplexity.svg" alt="Perplexity">
         <span class="sb-word">Perplexity</span>
       </a>
       <div class="sb-head-btns">
@@ -146,7 +149,7 @@
       <div class="wrap">
         <div class="hero">
           <div class="mode-label" id="modeLabel">Search</div>
-          <div class="hero-logo"><svg width="42" height="42" style="color:var(--teal-dark)"><use href="#i-logo"/></svg></div>
+          <div class="hero-logo"><img class="hero-logo-img" src="logos/perplexity.svg" alt="Perplexity"></div>
           <h1 id="heroTitle">What do you want to know?</h1>
           <p class="incognito-sub" id="incognitoSub" hidden>Sessions you create won't save to your history and expire after 24 hours</p>
         </div>
