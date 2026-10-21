@@ -17,9 +17,27 @@ A full, pixel-faithful **front-end replica of [perplexity.ai](https://www.perple
 - **Plans dialog** — Free / Pro ($17) / Max ($167) with Personal/Education/Business switcher
 - **Login modal** (Google / Apple / email / SSO) with a local demo sign-in that actually unlocks features, **incognito mode** (Ctrl+;), **command palette** (Ctrl+K), cookie banner — all state persists in `localStorage`
 
+## Real AI
+
+Answers are **real**: the composer talks to `api/chat.js`, a Vercel serverless proxy that calls **Mistral Large** (`mistralai/mistral-large-4-0`) and streams the reply token-by-token into the Perplexity-style answer page. Follow-ups keep full conversation context. The API key lives only in the `XKIRO_API_KEY` Vercel env var — never in code.
+
+The model switcher contains exactly one model — **Mistral Large**, with the real Mistral logo.
+
 ## Tech
 
-Single-file `index.html` (119 KB) — vanilla HTML/CSS/JS, zero dependencies, zero build step. Fonts: Inter + Newsreader via Google Fonts. Full build spec in [`SPEC.md`](./SPEC.md).
+Organized static front-end — no build step, zero dependencies:
+
+```
+index.html        markup + SVG icon sprite
+css/main.css      desktop styles
+css/phone.css     phone styles (Perplexity-app layout: top app bar, bottom tab bar, bottom sheets)
+js/core.js        state, menus, modals, composer
+js/ai.js          markdown renderer + streaming client
+js/app.js         views, Discover, pages, init
+api/chat.js       Vercel serverless AI proxy (key from env)
+```
+
+Fonts: Inter + Newsreader via Google Fonts. Full build spec in [`SPEC.md`](./SPEC.md).
 
 ## Run locally
 
