@@ -33,7 +33,7 @@ $("#collapseBtn").addEventListener("click",()=>{
 });
 $$("#mainNav .nav-item").forEach(b=>b.addEventListener("click",()=>{
   const n=b.dataset.nav;
-  if(n==="new"){resetChat();showView("home");const c=composers.find(x=>x.ctx==="home");if(c)setTimeout(()=>c.ta.focus(),50)}
+  if(n==="new"){resetThreadState();showView("home");const c=composers.find(x=>x.ctx==="home");if(c)setTimeout(()=>c.ta.focus(),50)}
   else showView(n);
 }));
 function sectionToggle(secId,chevId){
@@ -57,8 +57,12 @@ $("#userBtn").addEventListener("click",e=>{
   },{width:250});
 });
 function renderRecents(){
-  const list=$("#recentsList");$("#recentsEmpty").hidden=state.recents.length>0;
-  list.innerHTML=state.recents.map(q=>`<button class="sb-list-item" data-q="${esc(q)}">${esc(q)}</button>`).join("");
+  const list=$("#recentsList");
+  const threads=state.threads||[];
+  $("#recentsEmpty").hidden=threads.length>0||state.recents.length>0;
+  list.innerHTML=threads.map(t=>`<button class="sb-list-item" data-tid="${t.id}">${esc(t.title)}</button>`).join("")+
+    state.recents.filter(q=>!threads.some(t=>t.title===q)).map(q=>`<button class="sb-list-item" data-q="${esc(q)}">${esc(q)}</button>`).join("");
+  $$("[data-tid]",list).forEach(b=>b.addEventListener("click",()=>openThread(b.dataset.tid)));
   $$("[data-q]",list).forEach(b=>b.addEventListener("click",()=>doSearch(b.dataset.q)));
 }
 function renderProjects(){
@@ -97,7 +101,7 @@ function openPalette(){
   function render(){
     const q=input.value.trim().toLowerCase();
     let items=base.filter(i=>!q||i.label.toLowerCase().includes(q));
-    if(!q){state.recents.slice(0,4).forEach(r=>items.push({label:r,ic:"auto",hint:"Recent",run:()=>doSearch(r)}));
+    if(!q){state.recents.slice(0,4).forEach(r=>items.push({label:r,ic:"auto",hint:"Recent",run:()=>{const t=(state.threads||[]).find(x=>x.title===r);t?openThread(t.id):doSearch(r)}}));
             state.projects.forEach(p=>items.push({label:p.name,ic:"cube",hint:"Project",run:()=>{showView("home");toast("Project “"+p.name+"” opened")}}))}
     list.innerHTML=items.length?items.map((i,ix)=>`<button class="palette-item ${ix===0?"sel":""}" data-ix="${ix}">${icon(i.ic)} ${esc(i.label)}<span class="hint">${i.hint}</span></button>`).join(""):`<div class="menu-head">No results</div>`;
     $$(".palette-item",list).forEach(b=>b.addEventListener("click",()=>{const it=items[+b.dataset.ix];closeModal();it.run()}));
@@ -114,7 +118,7 @@ $("#suggestSearch").addEventListener("click",()=>{
   const ov=openModal(`${xBtn}<h2>Get the most accurate answers from all of the top AI models</h2>
    <p class="sub">Perplexity searches the web and cites its sources – so you can trust what you read.</p>
    <div class="edu-mock"><div style="color:var(--ink-3);font-size:15px">Ask anything…</div>
-    <div class="edu-scroll"><div class="chip-row">${MODELS.map(m=>`<span class="model-chip">${m.logo?icon("mistral","ic sm")+" ":""}${m.name}${m.badge?` <span class="badge ${m.badge==="Max"?"max":"new"}">${m.badge}</span>`:""}</span>`).join("")}</div></div></div>
+    <div class="edu-scroll"><div class="chip-row">${MODELS.map(m=>`<span class="model-chip"><img class="model-logo" src="${m.logo}" alt=""> ${m.name}</span>`).join("")}</div></div></div>
    <button class="btn black block" id="eduLogin">Login or sign up for free</button>`,"edu-dialog");
   $("#eduLogin",ov).addEventListener("click",()=>loginModal());
 });
@@ -248,7 +252,7 @@ function articleShell(o){
    <div class="more-grid">${STORIES.filter(s=>s.id!==o.id).slice(0,4).map(s=>`<article class="more-card" data-open="${s.id}"><img src="https://picsum.photos/seed/${s.seed}/480/260" alt="" loading="lazy"><h5>${esc(s.title)}</h5><p>${esc(s.summary)}</p></article>`).join("")}</div>`;
 }
 function openStory(s){
-  currentBack="discover";$("#storyBackLabel").textContent="Back to Discover";$("#storyBarTitle").textContent=s.title;
+  inChat=false;currentBack="discover";$("#storyBackLabel").textContent="Back to Discover";$("#storyBarTitle").textContent=s.title;
   showView("story");
   $("#articleBody").innerHTML=articleShell({
     id:s.id,title:s.title,meta:"Published "+s.time,seed:s.seed,srcIdx:[...s.outlets,(s.outlets[0]+3)%OUTLETS.length],sources:s.sources,
@@ -259,42 +263,132 @@ function openStory(s){
   });
   bindArticle($("#articleBody"));
 }
-$("#storyBack").addEventListener("click",()=>{currentBack==="discover"?showDiscover(discTopic):showView("home")});
+$("#storyBack").addEventListener("click",()=>{if(inChat){inChat=false;showView("home")}else if(currentBack==="discover")showDiscover(discTopic);else showView("home")});
 $("#storyShareBtn").addEventListener("click",e=>shareMenu(e.currentTarget));
-function addRecent(q){
+/* ================= CHAT THREADS ================= */
+if(!Array.isArray(state.threads))state.threads=[];
+let inChat=false,currentThreadId=null,threadMsgs=[];
+function resetThreadState(){inChat=false;currentThreadId=null;threadMsgs=[];resetChat()}
+const modelMeta=k=>MODELS.find(m=>m.key===k)||MODELS[0];
+function scrollMainBottom(){const m=$("#main");m.scrollTop=m.scrollHeight}
+function syncRecentsFromThreads(){state.recents=state.threads.map(t=>t.title)}
+function saveCurrentThread(){
   if(document.body.classList.contains("incognito"))return;
-  state.recents=[q,...state.recents.filter(x=>x!==q)].slice(0,12);save();renderRecents();
+  if(!threadMsgs.some(m=>m.role==="ai"))return;
+  const title=(threadMsgs.find(m=>m.role==="user")||{}).text||"New thread";
+  if(!currentThreadId)currentThreadId="t"+Date.now().toString(36);
+  const rec={id:currentThreadId,title:title.slice(0,90),msgs:threadMsgs.map(m=>({role:m.role,text:String(m.text||"").slice(0,20000),model:m.model||null}))};
+  state.threads=[rec,...state.threads.filter(t=>t.id!==currentThreadId)].slice(0,8);
+  syncRecentsFromThreads();save();renderRecents();
+}
+function startThread(){
+  inChat=true;currentThreadId=null;threadMsgs=[];chatHistory=[];
+  $("#storyBackLabel").textContent="Back";showView("story");
+  $("#articleBody").innerHTML=`<div class="thread" id="threadMsgs"></div>`;
+}
+function appendUserBubble(text){
+  const t=$("#threadMsgs");if(!t)return;
+  const el=document.createElement("div");el.className="msg-user anim-in";
+  el.innerHTML=`<div class="bubble">${esc(text)}</div>`;t.appendChild(el);
+}
+function appendAiBlock(modelKey){
+  const t=$("#threadMsgs");if(!t)return null;
+  const meta=modelMeta(modelKey);
+  const wrap=document.createElement("div");wrap.className="msg-ai anim-in";
+  wrap.innerHTML=`<div class="model-row"><img class="model-logo" src="${meta.logo}" alt=""> ${esc(meta.name)} <span class="live-dot">· Live AI answer</span></div>
+   <div class="search-status ai-status" style="margin-top:14px"><span class="spinner"></span> ${esc(meta.name)} is thinking…</div>
+   <div class="answer-md"></div><div class="ai-tools-slot"></div>`;
+  t.appendChild(wrap);return wrap;
+}
+function attachAiTools(wrap,raw,modelKey){
+  const slot=$(".ai-tools-slot",wrap);if(!slot)return;
+  const meta=modelMeta(modelKey);
+  slot.innerHTML=`<div class="ai-tools">
+    <button class="tool-btn" data-t="copy" data-tip="Copy" aria-label="Copy answer">${icon("copy","ic sm")}</button>
+    <button class="tool-btn" data-t="share" data-tip="Share" aria-label="Share">${icon("share","ic sm")}</button>
+    <button class="tool-btn" data-t="like" data-tip="Good response" aria-label="Good response">${icon("thumb","ic sm")}</button>
+    <button class="tool-btn" data-t="dislike" data-tip="Bad response" aria-label="Bad response">${icon("thumbd","ic sm")}</button>
+    <button class="tool-btn" data-t="branch" data-tip="Branch into a new thread" aria-label="Branch">${icon("branch","ic sm")}</button>
+    <span class="tool-pill"><img class="model-logo sm" src="${meta.logo}" alt=""> ${esc(meta.name)}</span>
+    <span style="flex:1"></span>
+    <button class="tool-btn" data-t="more" aria-label="More actions">${icon("dots","ic sm")}</button></div>`;
+  const q=s=>$(`[data-t="${s}"]`,slot);
+  q("copy").addEventListener("click",()=>copyText(raw,"Answer copied"));
+  q("share").addEventListener("click",()=>copyText(location.href,"Link copied"));
+  q("like").addEventListener("click",()=>{q("like").classList.add("on");q("dislike").classList.remove("on");toast("Thanks for your feedback")});
+  q("dislike").addEventListener("click",()=>{q("dislike").classList.add("on");q("like").classList.remove("on");toast("Thanks — we'll use that to improve")});
+  q("branch").addEventListener("click",()=>branchFromAi(wrap));
+  q("more").addEventListener("click",e=>{
+    openMenu(e.currentTarget,el=>{
+      el.innerHTML=`
+       <button class="menu-item" data-m="regen">${icon("auto")}<span class="grow">Regenerate response</span></button>
+       <button class="menu-item" data-m="copy">${icon("copy")}<span class="grow">Copy</span></button>
+       <button class="menu-item" data-m="export">${icon("file")}<span class="grow">Export thread (.md)</span></button>
+       <div class="menu-sep"></div>
+       <button class="menu-item" data-m="del">${icon("trash")}<span class="grow">Delete thread</span></button>`;
+      $("[data-m='regen']",el).addEventListener("click",()=>{closeMenu();regenerateAi(wrap,modelKey)});
+      $("[data-m='copy']",el).addEventListener("click",()=>{closeMenu();copyText(raw,"Answer copied")});
+      $("[data-m='export']",el).addEventListener("click",()=>{closeMenu();exportThread()});
+      $("[data-m='del']",el).addEventListener("click",()=>{closeMenu();deleteCurrentThread()});
+    },{width:240,align:"right"});
+  });
+}
+function runAiTurn(modelKey){
+  const wrap=appendAiBlock(modelKey);if(!wrap)return;
+  const bodyEl=$(".answer-md",wrap),statusEl=$(".ai-status",wrap);
+  streamAnswer(chatHistory,modelKey,bodyEl,statusEl,
+    raw=>{chatHistory.push({role:"assistant",content:raw});threadMsgs.push({role:"ai",text:raw,model:modelKey});attachAiTools(wrap,raw,modelKey);saveCurrentThread();scrollMainBottom()},
+    err=>{statusEl.className="";statusEl.innerHTML=`<div class="empty-state" style="margin-top:8px"><h3>Couldn't get an answer</h3><p>${esc(err.message||"Something went wrong.")}</p><button class="btn black" data-retry>Try again</button></div>`;
+      $("[data-retry]",statusEl).addEventListener("click",()=>{wrap.remove();runAiTurn(modelKey)})});
 }
 function doSearch(q){
   q=(q||"").trim();if(!q)return;
-  addRecent(q);currentBack="home";$("#storyBackLabel").textContent="Back";$("#storyBarTitle").textContent=q;
-  showView("story");
-  const body=$("#articleBody");
-  body.innerHTML=`<h2 class="a-title">${esc(q)}</h2>
-    <div class="model-row">${icon("mistral","ic sm")} Mistral Large <span style="color:var(--ink-3);font-weight:500">· Live AI answer</span></div>
-    <div class="search-status" id="ansStatus" style="margin-top:20px"><span class="spinner"></span> Mistral Large is thinking…</div>
-    <div class="answer-md" id="ansBody"></div><div id="ansAfter"></div>`;
-  $("#main").scrollTop=0;
-  chatHistory.push({role:"user",content:q});
-  streamAnswer(chatHistory,$("#ansBody"),$("#ansStatus"),
-    raw=>{
-      chatHistory.push({role:"assistant",content:raw});
-      const after=$("#ansAfter");if(!after)return;
-      after.innerHTML=`<div class="ans-actions"><button class="mini-btn" id="ansCopy">${icon("copy","ic sm")} Copy answer</button><span style="flex:1"></span><span style="font-size:12px;color:var(--ink-3)">Generated by Mistral Large</span></div>
-       <div class="follow-label">Follow-ups</div>
-       ${[`What is the background of ${q}?`,`How does ${q} affect everyday people?`,`What happens next with ${q}?`].map(f=>`<button class="follow-chip" data-follow="${esc(f)}">${esc(f)} ${icon("chevr","ic sm")}</button>`).join("")}
-       <div class="follow-label" style="margin-top:38px">Discover more</div>
-       <div class="more-grid">${STORIES.slice(0,4).map(s=>`<article class="more-card" data-open="${s.id}"><img src="https://picsum.photos/seed/${s.seed}/480/260" alt="" loading="lazy"><h5>${esc(s.title)}</h5><p>${esc(s.summary)}</p></article>`).join("")}</div>`;
-      $("#ansCopy").addEventListener("click",()=>copyText(raw,"Answer copied"));
-      bindArticle(after);
-    },
-    err=>{
-      chatHistory.pop();
-      const st=$("#ansStatus");if(!st)return;
-      st.className="";st.removeAttribute("style");
-      st.innerHTML=`<div class="empty-state" style="margin-top:22px"><h3>Couldn't get an answer</h3><p>${esc(err.message||"Something went wrong.")}</p><button class="btn black" id="ansRetry">Try again</button></div>`;
-      const r=$("#ansRetry");if(r)r.addEventListener("click",()=>doSearch(q));
-    });
+  if(!inChat||currentView!=="story"||!$("#threadMsgs"))startThread();
+  if(!threadMsgs.some(m=>m.role==="user"))$("#storyBarTitle").textContent=q;
+  appendUserBubble(q);threadMsgs.push({role:"user",text:q});chatHistory.push({role:"user",content:q});
+  scrollMainBottom();runAiTurn(activeModel);
+}
+function renderThreadMsgs(){
+  $("#articleBody").innerHTML=`<div class="thread" id="threadMsgs"></div>`;
+  threadMsgs.forEach(m=>{
+    if(m.role==="user")appendUserBubble(m.text);
+    else{const wrap=appendAiBlock(m.model||"mistral");if(!wrap)return;const st=$(".ai-status",wrap);if(st)st.remove();$(".answer-md",wrap).innerHTML=mdToHtml(m.text);attachAiTools(wrap,m.text,m.model||"mistral")}
+  });
+}
+function openThread(id){
+  const t=state.threads.find(x=>x.id===id);if(!t)return;
+  inChat=true;currentThreadId=t.id;threadMsgs=t.msgs.map(m=>({...m}));
+  chatHistory=threadMsgs.map(m=>m.role==="user"?{role:"user",content:m.text}:{role:"assistant",content:m.text});
+  $("#storyBackLabel").textContent="Back";$("#storyBarTitle").textContent=t.title;showView("story");renderThreadMsgs();scrollMainBottom();
+}
+function branchFromAi(wrap){
+  const blocks=$$("#threadMsgs .msg-ai");const ix=blocks.indexOf(wrap);
+  let aiSeen=-1,endIx=threadMsgs.length-1;
+  threadMsgs.forEach((m,i)=>{if(m.role==="ai"){aiSeen++;if(aiSeen===ix)endIx=i}});
+  const msgs=threadMsgs.slice(0,endIx+1).map(m=>({...m}));
+  if(!msgs.length)return;
+  const rec={id:"t"+Date.now().toString(36),title:((msgs.find(m=>m.role==="user")||{}).text||"Branch").slice(0,90),msgs};
+  state.threads=[rec,...state.threads].slice(0,8);syncRecentsFromThreads();save();renderRecents();
+  openThread(rec.id);toast("Branched into a new thread");
+}
+function regenerateAi(wrap,modelKey){
+  const blocks=$$("#threadMsgs .msg-ai");
+  if(blocks.indexOf(wrap)!==blocks.length-1)return toast("Regenerate works on the latest reply");
+  if(threadMsgs.length&&threadMsgs[threadMsgs.length-1].role==="ai")threadMsgs.pop();
+  if(chatHistory.length&&chatHistory[chatHistory.length-1].role==="assistant")chatHistory.pop();
+  wrap.remove();runAiTurn(modelKey);
+}
+function exportThread(){
+  const title=(threadMsgs.find(m=>m.role==="user")||{}).text||"Thread";
+  const md="# "+title+"\n\n"+threadMsgs.map(m=>m.role==="user"?("**You:** "+m.text):("**"+modelMeta(m.model||"mistral").name+":** "+m.text)).join("\n\n")+"\n";
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(new Blob([md],{type:"text/markdown"}));
+  a.download=title.slice(0,40).replace(/[^\w ]/g,"").trim().replace(/\s+/g,"-")+".md";
+  a.click();setTimeout(()=>URL.revokeObjectURL(a.href),2000);toast("Thread exported");
+}
+function deleteCurrentThread(){
+  if(currentThreadId){state.threads=state.threads.filter(t=>t.id!==currentThreadId);syncRecentsFromThreads();save();renderRecents()}
+  resetThreadState();showView("home");toast("Thread deleted");
 }
 
 /* ================= COMPUTER ================= */
@@ -431,6 +525,7 @@ document.addEventListener("keydown",e=>{
 
 /* ================= INIT ================= */
 buildComposers();
+updateModelUI();
 updateAuthUI();
 renderRecents();
 renderProjects();
@@ -450,6 +545,6 @@ $$("#mobileTabs .mtab").forEach(b=>b.addEventListener("click",()=>{
   const t=b.dataset.mtab;
   if(t==="home")showView("home");
   else if(t==="discover")showDiscover("Top");
-  else if(t==="new"){resetChat();showView("home");const c=composers.find(x=>x.ctx==="home");if(c){c.ta.value="";syncComposer(c);setTimeout(()=>c.ta.focus(),60)}}
+  else if(t==="new"){resetThreadState();showView("home");const c=composers.find(x=>x.ctx==="home");if(c){c.ta.value="";syncComposer(c);setTimeout(()=>c.ta.focus(),60)}}
   else showView(t);
 }));
