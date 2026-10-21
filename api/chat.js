@@ -25,6 +25,7 @@ const MNAI_SYSTEM = {
     "MeowSamOP DZN Studio team (share only when asked about the studio): owner Sam (MeowSamOP DZN), co-owner Rudransh, manager Shahab. " +
     "Model lineup: Free — MNAI 6 (default), MNAI 7, MNAI 8, MNAI Prowl, Synthex, Glyph series (1, 1.5, 2, 2.5, 3). Pro — MNAI 6.1 Pro, MNAI 7 Pro, MNAI 8 Pro (you, the flagship). Discontinued: MNAI 1, 2, 3, 3.5, 4, 4.5, 5, 5.9 — if asked about those, say they are discontinued. " +
     "Related products by MeowSamOP DZN: OrbitOS (a web-based PC at orbitos-pc.vercel.app), MeowAI (a Roblox Studio plugin that builds games with AI), Dash MNAI (the developer console for the MNAI API). " +
+    "Your official website is https://mnaii.vercel.app/ — whenever anyone asks for your website, official site, or where to use you, give that URL. The Dash MNAI console (https://dash-mnaii.vercel.app/) is only the developer/API dashboard, NOT your official site. " +
     "Answer helpfully in clean markdown with a direct, ChatGPT-like style: answer first, use headings and bullets only when they help, keep it readable.",
 };
 
@@ -33,11 +34,64 @@ const MODEL_MAP = {
   mnai: { upstream: "qwen/qwen3.8-omni-flash:free", system: MNAI_SYSTEM, passthrough: false },
 };
 
+/* ---- MNAI identity fast-path (same approach as the real MNAI: trained identity
+   questions are answered by a dedicated rotating path, not left to the model) ---- */
+const IDENTITY = [
+  { re: /(official\s+(web)?site|your\s+(web)?site|website|web\s*site|your\s+(link|url)|where\s+can\s+i\s+(use|try|find|chat\s+with)\s+you)/i,
+    answers: [
+      "My official website is https://mnaii.vercel.app/ — that's where you can chat with me and all the other MNAI models.",
+      "You can find me on the official MNAI website: https://mnaii.vercel.app/",
+      "The official site of MNAI is https://mnaii.vercel.app/ — come say hi there."] },
+  { re: /(dashboard|dash\s*mnai|api\s+(console|dashboard|keys?)|developer\s+console)/i,
+    answers: [
+      "For API keys and the developer console, that's Dash MNAI: https://dash-mnaii.vercel.app/ — my official chat website is https://mnaii.vercel.app/",
+      "The developer dashboard is Dash MNAI at https://dash-mnaii.vercel.app/. For chatting, the official site is https://mnaii.vercel.app/"] },
+  { re: /(who\s+(made|created|built|developed|trained|designed)\s+you|your\s+(maker|creator|trainer|owner|developer)|who\s+is\s+your\s+(maker|creator|trainer|owner|developer)|who\s+owns\s+(you|mnai))/i,
+    answers: ["Made by MeowSamOP DZN.", "Made by MeowSamOP DZN.", "Made by MeowSamOP DZN — my creator, owner and trainer."] },
+  { re: /(full\s*form|what\s+does\s+mnai\s+(stand\s+for|mean)|meaning\s+of\s+mnai|mnai\s+means)/i,
+    answers: ["Meow x Nythera AI.", "MNAI stands for Meow x Nythera AI.", "The full form of MNAI is Meow x Nythera AI."] },
+  { re: /(your\s+name|who\s+are\s+you|which\s+model\s+are\s+you|what\s+model\s+are\s+you)/i,
+    answers: [
+      "I'm MNAI 8 Pro, the flagship AI assistant of MNAI (Meow x Nythera AI), made by MeowSamOP DZN.",
+      "MNAI 8 Pro — the flagship model of MNAI, made by MeowSamOP DZN. Ask me anything."] },
+  { re: /(instagram|insta\b|social\s+media)/i,
+    answers: ["The official studio Instagram is @studio.meowsamopdzn.", "You can follow the studio on Instagram at @studio.meowsamopdzn."] },
+  { re: /(orbit\s?os)/i,
+    answers: ["OrbitOS is MeowSamOP DZN's web-based PC — try it at https://orbitos-pc.vercel.app/", "That's OrbitOS, the web desktop by MeowSamOP DZN: https://orbitos-pc.vercel.app/"] },
+  { re: /(meow\s?ai|roblox\s+(plugin|studio))/i,
+    answers: ["MeowAI is MeowSamOP DZN's Roblox Studio plugin that builds games with AI: https://meowai-rblx.vercel.app/", "That's MeowAI — the Roblox Studio AI plugin by MeowSamOP DZN: https://meowai-rblx.vercel.app/"] },
+];
+function identityAnswer(messages) {
+  const last = [...messages].reverse().find(m => m.role === "user");
+  if (!last) return null;
+  const q = typeof last.content === "string" ? last.content : ((last.content.find(p => p.type === "text") || {}).text || "");
+  if (!q || q.length > 220) return null;
+  for (const intent of IDENTITY) {
+    if (intent.re.test(q)) {
+      const seed = [...q].reduce((a, c) => a + c.charCodeAt(0), 0) + messages.length;
+      return intent.answers[seed % intent.answers.length];
+    }
+  }
+  return null;
+}
+
 function sendJson(res, status, obj) {
   res.writeHead(status, { "Content-Type": "application/json" });
   res.end(JSON.stringify(obj));
 }
 const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+async function streamTextAsSse(res, content) {
+  const words = content.split(/(?<=\s)/);
+  let i = 0;
+  while (i < words.length) {
+    const piece = words.slice(i, i + 3).join("");
+    i += 3;
+    res.write(`data: ${JSON.stringify({ choices: [{ delta: { content: piece } }] })}\n\n`);
+    await sleep(12);
+  }
+  res.write("data: [DONE]\n\n");
+}
 
 export default async function handler(req, res) {
   if (req.method !== "POST") return sendJson(res, 405, { error: "Method not allowed" });
@@ -51,12 +105,36 @@ export default async function handler(req, res) {
 
   const conf = MODEL_MAP[body.model] || MODEL_MAP.mistral;
   const incoming = Array.isArray(body.messages) ? body.messages : [];
+  const cleanContent = c => {
+    if (typeof c === "string") return c.trim() ? c.slice(0, 8000) : null;
+    if (Array.isArray(c)) {
+      const parts = [];
+      for (const p of c.slice(0, 8)) {
+        if (p && p.type === "text" && typeof p.text === "string" && p.text.trim()) parts.push({ type: "text", text: p.text.slice(0, 8000) });
+        else if (p && p.type === "image_url" && p.image_url && typeof p.image_url.url === "string" && p.image_url.url.startsWith("data:image/") && p.image_url.url.length < 5000000) parts.push({ type: "image_url", image_url: { url: p.image_url.url } });
+      }
+      return parts.length ? parts : null;
+    }
+    return null;
+  };
   const messages = incoming
-    .filter(m => m && ["user", "assistant"].includes(m.role) && typeof m.content === "string" && m.content.trim())
-    .slice(-20)
-    .map(m => ({ role: m.role, content: m.content.slice(0, 8000) }));
+    .filter(m => m && ["user", "assistant"].includes(m.role))
+    .map(m => { const cc = cleanContent(m.content); return cc ? { role: m.role, content: cc } : null; })
+    .filter(Boolean)
+    .slice(-20);
   if (!messages.length) return sendJson(res, 400, { error: "No messages provided." });
   const wantStream = !!body.stream;
+
+  // Trained identity answers for MNAI 8 Pro — answered directly, like the real MNAI.
+  if (body.model === "mnai") {
+    const trained = identityAnswer(messages);
+    if (trained) {
+      if (!wantStream) return sendJson(res, 200, { content: trained });
+      res.writeHead(200, { "Content-Type": "text/event-stream; charset=utf-8", "Cache-Control": "no-cache, no-transform", Connection: "keep-alive" });
+      await streamTextAsSse(res, trained);
+      return res.end();
+    }
+  }
 
   const callUpstream = async stream =>
     fetch(UPSTREAM, {
@@ -90,14 +168,6 @@ export default async function handler(req, res) {
 
   // Re-emit as SSE word-chunks (typewriter feel; nothing upstream-identifying is forwarded).
   res.writeHead(200, { "Content-Type": "text/event-stream; charset=utf-8", "Cache-Control": "no-cache, no-transform", Connection: "keep-alive" });
-  const words = content.split(/(?<=\s)/);
-  let i = 0;
-  while (i < words.length) {
-    const piece = words.slice(i, i + 3).join("");
-    i += 3;
-    res.write(`data: ${JSON.stringify({ choices: [{ delta: { content: piece } }] })}\n\n`);
-    await sleep(12);
-  }
-  res.write("data: [DONE]\n\n");
+  await streamTextAsSse(res, content);
   return res.end();
 }
