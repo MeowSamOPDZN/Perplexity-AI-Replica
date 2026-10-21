@@ -1,6 +1,6 @@
 # Perplexity AI Replica
 
-A full, pixel-faithful **front-end replica of [perplexity.ai](https://www.perplexity.ai)** — built from a live audit of the real site (Oct 2026, logged-out state) with **every button, dropdown, menu and modal working**.
+A full, pixel-faithful **frontstack replica of [perplexity.ai](https://www.perplexity.ai)** — built from a live audit of the real site (Oct 2026, logged-out state) with **every button, dropdown, menu and modal working**.
 
 **Live demo:** https://perplexity-replica.vercel.app/
 
