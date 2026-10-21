@@ -1,0 +1,133 @@
+/* ==========================================================================
+   Perplexity AI Replica — PHONE CSS
+   App-style mobile layout modeled on the Perplexity mobile app:
+   fixed top app bar, bottom tab bar with a raised center "New" button,
+   bottom-sheet menus and dialogs, single-column feed, sticky follow-up bar.
+   Loaded only on small screens (link media="(max-width: 860px)").
+   ========================================================================== */
+@media (max-width: 860px) {
+
+  /* ---- chrome: hide desktop sidebar, show app bar + tab bar ---- */
+  #sidebar { display: none !important; }
+  #mobileBar {
+    display: flex; align-items: center; gap: 2px;
+    position: fixed; top: 0; left: 0; right: 0; height: 54px; z-index: 300;
+    padding: 0 10px 0 14px;
+    background: color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    border-bottom: 1px solid var(--line);
+  }
+  #mobileBar .icon-btn { width: 38px; height: 38px; border-radius: 50%; }
+  #mobileBar .avatar { width: 30px; height: 30px; }
+  #mobileTabs {
+    display: flex; justify-content: space-around; align-items: flex-end;
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 300;
+    background: var(--surface); border-top: 1px solid var(--line);
+    padding: 6px 6px calc(6px + env(safe-area-inset-bottom));
+  }
+  .mtab {
+    display: flex; flex-direction: column; align-items: center; gap: 3px;
+    font-size: 10.5px; font-weight: 600; color: var(--ink-3);
+    padding: 5px 12px; border-radius: 12px; min-width: 60px;
+  }
+  .mtab .ic { width: 22px; height: 22px; }
+  .mtab.active { color: var(--teal-dark); }
+  .mtab[data-mtab="new"] { gap: 4px; }
+  .mtab-plus {
+    width: 44px; height: 44px; border-radius: 50%; margin-top: -22px;
+    background: var(--teal); color: #fff; display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 6px 18px rgba(32,128,141,.4); border: 3px solid var(--surface);
+  }
+  .mtab-plus .ic { width: 20px; height: 20px; }
+
+  /* ---- main column ---- */
+  #main { padding-top: 54px; padding-bottom: 74px; }
+  .top-actions { display: none; }
+  .wrap { padding: 0 16px; }
+  .wrap-wide { padding: 0 16px; }
+
+  /* ---- home ---- */
+  .hero { padding-top: 5vh; }
+  .hero h1 { font-size: 29px; margin: 12px 0 22px; }
+  .hero-logo svg { width: 34px; height: 34px; }
+  .mode-label { margin-bottom: 10px; }
+  .suggest-grid { grid-template-columns: 1fr; margin-top: 18px; }
+  .incognito-sub { font-size: 13.5px; }
+
+  /* ---- composer (app-style rounded sheet) ---- */
+  .composer { border-radius: 20px; padding: 12px 12px 8px; }
+  .composer textarea { font-size: 16px; } /* prevents iOS focus zoom */
+  .composer-row { gap: 2px; }
+  .composer-row .cbtn { height: 36px; }
+  .voice-btn, .submit-btn { width: 36px; height: 36px; }
+
+  /* ---- menus become bottom sheets (JS positions inline, overridden here) ---- */
+  #menu {
+    left: 10px !important; right: 10px; top: auto !important; bottom: 84px;
+    width: auto !important; min-width: 0 !important; max-width: none;
+    border-radius: 18px; max-height: 58vh; padding: 8px;
+    animation: sheetUp .22s ease both;
+  }
+  @keyframes sheetUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+  .menu-item { padding: 11px 12px; font-size: 14.5px; border-radius: 12px; }
+
+  /* ---- dialogs become bottom sheets ---- */
+  .overlay { align-items: flex-end; padding: 0; }
+  .dialog { border-radius: 22px 22px 0 0; max-height: 94vh; width: 100%; animation: sheetUp .24s ease both; }
+  .login-dialog, .edu-dialog, .form-dialog { padding: 24px 20px calc(20px + env(safe-area-inset-bottom)); }
+  .plans-dialog { padding: 22px 16px calc(18px + env(safe-area-inset-bottom)); }
+  .plans-grid { grid-template-columns: 1fr; }
+  .plan-radios { flex-wrap: wrap; }
+  .palette-dialog { border-radius: 22px 22px 0 0; }
+  .edu-panels { grid-template-columns: 1fr; }
+
+  /* ---- discover ---- */
+  .disc-head { padding: 14px 0 4px; }
+  .disc-tabs { overflow-x: auto; scrollbar-width: none; }
+  .disc-tabs::-webkit-scrollbar { display: none; }
+  .disc-grid { grid-template-columns: 1fr; gap: 8px; padding-top: 16px; }
+  .lead-story h3 { font-size: 23px; }
+  .card-row { grid-template-columns: 1fr; gap: 20px; }
+  .story-card img { height: 190px; }
+  .story-card h4 { font-size: 18px; }
+  .wide-story { grid-template-columns: 1fr; gap: 12px; }
+  .wide-story img { width: 100%; height: 180px; order: -1; }
+  .rail { position: static; margin-top: 10px; }
+  .market-row { grid-template-columns: 1fr 1fr; }
+
+  /* ---- story / answer ---- */
+  .topbar { padding: 9px 10px; gap: 4px; }
+  .topbar .tb-title { font-size: 12.5px; }
+  .back-btn { padding: 7px 8px; }
+  .article { padding: 18px 16px 22px; }
+  .article h2.a-title { font-size: 24px; }
+  .article .lead { font-size: 15px; }
+  .src-cards { grid-template-columns: 1fr 1fr; }
+  .hero-img img { height: 210px; }
+  .more-grid { grid-template-columns: 1fr 1fr; gap: 12px; }
+  .more-card img { height: 74px; }
+  .answer-md { font-size: 15px; }
+  .answer-md>p:first-child { font-size: 15.5px; }
+  .answer-md h3 { font-size: 20px; }
+  .followup-bar { bottom: 66px; padding: 10px 10px 12px; }
+
+  /* ---- pages (Computer / Automations / Artifacts / Customize) ---- */
+  .page { padding: 4vh 16px 40px; }
+  .page h1.p-title { font-size: 26px; }
+  .page .p-sub { font-size: 14px; }
+  .template-grid, .conn-grid, .artifact-grid { grid-template-columns: 1fr; }
+  .toolbar { gap: 8px; margin: 16px 0 12px; }
+  .search-box { flex: 1 1 150px; min-width: 0; }
+  .ftabs { overflow-x: auto; flex-wrap: nowrap; scrollbar-width: none; max-width: 100%; }
+  .ftabs::-webkit-scrollbar { display: none; }
+  .ftab { white-space: nowrap; }
+  .empty-state { padding: 36px 16px; }
+
+  /* ---- floating bits ---- */
+  .cookie { left: 12px; right: 12px; bottom: 84px; max-width: none; }
+  #toasts { bottom: 92px; width: max-content; max-width: 92vw; }
+  .toast { font-size: 13px; text-align: center; }
+  .voice-orb { width: 92px; height: 92px; }
+  .voice-overlay h2 { font-size: 23px; margin-top: 36px; }
+  [data-tip]:hover::after { display: none; } /* no hover tooltips on touch */
+}
