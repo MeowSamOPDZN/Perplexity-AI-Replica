@@ -432,3 +432,22 @@ input[type="checkbox"].menu-cb:checked::after{content:"";position:absolute;left:
 .answer-md hr{border:none;border-top:1px solid var(--line);margin:22px 0}
 .answer-md a{font-weight:500}
 .ans-actions{display:flex;align-items:center;gap:6px;margin-top:24px;padding-top:14px;border-top:1px solid var(--line)}
+
+/* ============ LOGOS (Sam's SVGs in /logos) ============ */
+.logo-img{width:24px;height:24px;flex:none}
+.hero-logo-img{width:42px;height:42px}
+.model-logo{width:18px;height:18px;border-radius:4px;object-fit:contain;vertical-align:-3px;flex:none}
+.model-logo.sm{width:14px;height:14px}
+
+/* ============ CHAT THREAD ============ */
+.thread{padding-bottom:10px}
+.msg-user{display:flex;justify-content:flex-end;margin:20px 0 4px}
+.msg-user .bubble{background:var(--hover);border:1px solid var(--line);padding:10px 15px;border-radius:20px 20px 6px 20px;max-width:78%;font-size:15px;line-height:1.55;white-space:pre-wrap;word-break:break-word}
+.msg-ai{margin:8px 0 28px}
+.msg-ai .model-row{margin-top:2px}
+.live-dot{color:var(--ink-3);font-weight:500}
+.ai-tools{display:flex;align-items:center;gap:2px;margin-top:14px;padding-top:10px;border-top:1px solid var(--line)}
+.tool-btn{width:32px;height:32px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;color:var(--ink-2);position:relative}
+.tool-btn:hover{background:var(--hover);color:var(--ink)}
+.tool-btn.on{color:var(--teal-dark);background:var(--teal-soft)}
+.tool-pill{display:inline-flex;align-items:center;gap:6px;margin-left:8px;font-size:12px;font-weight:600;color:var(--ink-2);border:1px solid var(--line);padding:4px 10px;border-radius:999px;background:var(--surface);white-space:nowrap}
