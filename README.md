@@ -1,6 +1,6 @@
 # Perplexity AI Replica
 
-A full, pixel-faithful **frontstack replica of [perplexity.ai](https://www.perplexity.ai)** — built from a live audit of the real site (Oct 2026, logged-out state) with **every button, dropdown, menu and modal working**.
+A full, pixel-faithful **front-end replica of [perplexity.ai](https://www.perplexity.ai)** — built from a live audit of the real site (Oct 2026, logged-out state) with **every button, dropdown, menu and modal working**.
 
 **Live demo:** https://perplexity-replica.vercel.app/
 
@@ -19,9 +19,14 @@ A full, pixel-faithful **frontstack replica of [perplexity.ai](https://www.perpl
 
 ## Real AI
 
-Answers are **real**: the composer talks to `api/chat.js`, a Vercel serverless proxy that calls **Mistral Large** (`mistralai/mistral-large-4-0`) and streams the reply token-by-token into the Perplexity-style answer page. Follow-ups keep full conversation context. The API key lives only in the `XKIRO_API_KEY` Vercel env var — never in code.
+Answers are **real** and arrive in a chat thread: your messages sit in a bubble on the right, AI replies are clean text on the left with an action bar under every reply (copy, share, like, dislike, branch, model pill, more menu with regenerate / export / delete). Two live models, switchable in the composer:
 
-The model switcher contains exactly one model — **Mistral Large**, with the real Mistral logo.
+- **Mistral Large** (`mistralai/mistral-large-4-0`) — streamed token-by-token.
+- **MNAI 8 Pro** — the flagship MNAI model with the full MNAI identity (made by MeowSamOP DZN), powered server-side; its upstream is never exposed.
+
+Both run through `api/chat.js`, a Vercel serverless proxy. Follow-ups keep full conversation context, and threads persist in Recents so you can reopen or branch them. The API key lives only in the `XKIRO_API_KEY` Vercel env var — never in code.
+
+Logos are Sam's own SVGs in [`logos/`](./logos): `perplexity.svg` (site logo + favicon), `mistral-ai-icon.svg` (Mistral Large), `mnai-ai-icon.svg` (MNAI 8 Pro).
 
 ## Tech
 
