@@ -451,3 +451,71 @@ input[type="checkbox"].menu-cb:checked::after{content:"";position:absolute;left:
 .tool-btn:hover{background:var(--hover);color:var(--ink)}
 .tool-btn.on{color:var(--teal-dark);background:var(--teal-soft)}
 .tool-pill{display:inline-flex;align-items:center;gap:6px;margin-left:8px;font-size:12px;font-weight:600;color:var(--ink-2);border:1px solid var(--line);padding:4px 10px;border-radius:999px;background:var(--surface);white-space:nowrap}
+
+/* ============ SEGMENTED MODE CHANGER (Search | Computer) ============ */
+.seg{display:inline-flex;background:var(--hover);border:1px solid var(--line);border-radius:999px;padding:2px;gap:2px;flex:none}
+.seg-btn{display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 11px;border-radius:999px;font-size:13px;font-weight:600;color:var(--ink-2);transition:background .18s,color .18s}
+.seg-btn:hover{color:var(--ink)}
+.seg-btn.on{background:var(--surface);color:var(--ink);box-shadow:0 1px 4px rgba(20,40,45,.14)}
+.seg-btn .chev{transition:transform .2s}
+.composer.computer-mode{border-color:var(--teal);box-shadow:0 0 0 3px var(--teal-soft),0 14px 38px rgba(20,50,55,.12)}
+.composer.drag-over{border-color:var(--teal);box-shadow:0 0 0 3px var(--teal-soft)}
+.composer-foot{display:flex;align-items:center;gap:8px;max-width:768px;margin:8px auto 0;padding:0 6px}
+.composer-foot[hidden]{display:none}
+.composer-foot button{display:inline-flex;align-items:center;gap:7px;font-size:13px;font-weight:600;color:var(--ink-2);padding:7px 10px;border-radius:9px;transition:background .18s,color .18s}
+.composer-foot button:hover{background:var(--hover);color:var(--ink)}
+.composer-foot .sp{flex:1}
+.effort-btn{gap:6px}
+
+/* ============ ATTACHMENTS ============ */
+.att-thumb{width:26px;height:26px;border-radius:7px;object-fit:cover;flex:none}
+.attach-chip.img{padding:3px 10px 3px 4px}
+.bubble-img{display:block;max-width:230px;width:100%;border-radius:12px;margin-bottom:8px}
+.bubble-file{display:inline-flex;align-items:center;gap:6px;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:4px 9px;font-size:12.5px;font-weight:600;margin-top:8px}
+
+/* ============ RESEARCH LINE (replaces model row) ============ */
+.research{margin:2px 0 4px}
+.research-btn{display:inline-flex;align-items:center;gap:7px;font-size:13.5px;font-weight:600;color:var(--ink-2);padding:5px 8px;margin-left:-8px;border-radius:8px;transition:background .18s}
+.research-btn:not(:disabled):hover{background:var(--hover);color:var(--ink)}
+.research-btn .chev{transition:transform .2s}
+.research-btn.open .chev{transform:rotate(180deg)}
+.research-steps{margin:4px 0 8px;padding:10px 14px;background:var(--surface);border:1px solid var(--line);border-radius:12px;animation:fadeSlide .25s ease both}
+.r-step{display:flex;align-items:center;gap:9px;padding:5px 0;font-size:13.5px;color:var(--ink-2)}
+.r-step .ic{color:var(--ink-3)}
+
+/* ============ CHAT INPUT PINNED TO BOTTOM ============ */
+#view-story{display:flex;flex-direction:column;min-height:100%}
+#view-story .article{flex:1 0 auto;width:100%}
+#view-story .followup-bar{margin-top:auto;width:100%}
+
+/* ============ HERO (like the real site: logo + headline) ============ */
+.hero .mode-label{display:none}
+body.incognito .hero .mode-label{display:block}
+
+/* ============ RAIL (collapsed sidebar, like the real app) ============ */
+.rail-compass{display:none}
+body.rail .rail-compass{display:flex;width:40px;height:40px;border-radius:50%;border:1px solid var(--line);background:var(--surface);align-items:center;justify-content:center;margin:0 auto 10px;color:var(--ink-2);transition:all .18s}
+body.rail .rail-compass:hover{color:var(--teal-dark);border-color:var(--teal)}
+body.rail .sb-head-btns{flex-direction:column;gap:2px}
+body.rail #bellBtn{display:none}
+body.rail .sb-bottom{display:flex;flex-direction:column;align-items:center}
+body.rail .user-row{width:100%}
+
+/* ============ ANIMATIONS (whole site) ============ */
+@keyframes viewIn{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:translateY(0)}}
+@keyframes msgInR{from{opacity:0;transform:translateX(16px) scale(.97)}to{opacity:1;transform:translateX(0) scale(1)}}
+@keyframes msgInL{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+@keyframes fadeSlide{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}
+.view:not([hidden]){animation:viewIn .26s ease both}
+.msg-user{animation:msgInR .3s cubic-bezier(.2,.8,.3,1) both}
+.msg-ai{animation:msgInL .38s ease both}
+.composer{transition:border-color .2s,box-shadow .25s}
+.icon-btn,.tool-btn,.cbtn,.seg-btn,.btn{transition:transform .12s,background .18s,color .18s,border-color .18s,box-shadow .18s}
+.icon-btn:active,.tool-btn:active{transform:scale(.92)}
+.btn:active{transform:scale(.98)}
+.suggest-card,.story-card,.more-card,.template-card,.conn-card{transition:transform .22s,box-shadow .22s,border-color .22s}
+.suggest-card:hover,.template-card:hover,.conn-card:hover{transform:translateY(-2px)}
+#sidebar{transition:width .24s ease,padding .24s ease}
+.nav-item{transition:background .18s,color .18s}
+.research-btn .spinner{flex:none}
+@media (prefers-reduced-motion: reduce){*,*::before,*::after{animation-duration:.01ms !important;transition-duration:.01ms !important}}
