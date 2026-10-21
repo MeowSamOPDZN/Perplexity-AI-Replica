@@ -57,7 +57,7 @@ function mdToHtml(md) {
 }
 
 /* Streams an answer from /api/chat into bodyEl; hides statusEl on first token. */
-async function streamAnswer(messages, modelKey, bodyEl, statusEl, onDone, onError) {
+async function streamAnswer(messages, modelKey, bodyEl, statusEl, onDone, onError, onFirstToken) {
   try {
     const res = await fetch("/api/chat", {
       method: "POST",
@@ -90,7 +90,7 @@ async function streamAnswer(messages, modelKey, bodyEl, statusEl, onDone, onErro
           const t = d.content || "";
           if (t) {
             raw += t;
-            if (!shown) { shown = true; if (statusEl) statusEl.hidden = true; }
+            if (!shown) { shown = true; if (statusEl) statusEl.hidden = true; if (onFirstToken) onFirstToken(); }
             if (!queued) { queued = true; setTimeout(() => { queued = false; render(); }, 50); }
           }
         } catch (e) {}
