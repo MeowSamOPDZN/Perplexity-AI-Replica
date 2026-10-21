@@ -53,7 +53,7 @@ $("#userBtn").addEventListener("click",e=>{
      <button class="menu-item" data-u="upgrade">${icon("spark")}<span class="grow">Upgrade to Pro</span></button>
      <button class="menu-item" data-u="out">${icon("user")}<span class="grow">Sign out</span></button>`;
     $("[data-u='upgrade']",el).addEventListener("click",()=>{closeMenu();plansModal()});
-    $("[data-u='out']",el).addEventListener("click",()=>{state.user=null;state.plan="Free";save();updateAuthUI();closeMenu();toast("Signed out")});
+    $("[data-u='out']",el).addEventListener("click",()=>{fbSignOut();closeMenu();toast("Signed out")});
   },{width:250});
 });
 function renderRecents(){
@@ -112,6 +112,15 @@ function openPalette(){
   render();
 }
 $("#paletteBtn").addEventListener("click",openPalette);
+$("#bellBtn").addEventListener("click",e=>{
+  openMenu(e.currentTarget,el=>{
+    el.innerHTML=`<div class="menu-head">Notifications</div>
+     <button class="menu-item" data-n="1">${icon("spark")}<span class="grow">MNAI 8 Pro is live<br><span class="sub">A second real model joined Mistral Large in the switcher.</span></span></button>
+     <button class="menu-item" data-n="2">${icon("check")}<span class="grow">You're all caught up<br><span class="sub">No other notifications right now.</span></span></button>`;
+    $$("[data-n]",el).forEach(b=>b.addEventListener("click",closeMenu));
+  },{width:300});
+});
+$("#railCompass").addEventListener("click",()=>showDiscover("Top"));
 
 /* ================= EDUCATION MODALS ================= */
 $("#suggestSearch").addEventListener("click",()=>{
@@ -277,7 +286,7 @@ function saveCurrentThread(){
   if(!threadMsgs.some(m=>m.role==="ai"))return;
   const title=(threadMsgs.find(m=>m.role==="user")||{}).text||"New thread";
   if(!currentThreadId)currentThreadId="t"+Date.now().toString(36);
-  const rec={id:currentThreadId,title:title.slice(0,90),msgs:threadMsgs.map(m=>({role:m.role,text:String(m.text||"").slice(0,20000),model:m.model||null}))};
+  const rec={id:currentThreadId,title:title.slice(0,90),msgs:threadMsgs.map(m=>({role:m.role,text:String(m.text||"").slice(0,20000),model:m.model||null,secs:m.secs||null,atts:m.atts?m.atts.map(a=>({kind:a.kind,name:a.name})):null}))};
   state.threads=[rec,...state.threads.filter(t=>t.id!==currentThreadId)].slice(0,8);
   syncRecentsFromThreads();save();renderRecents();
 }
@@ -286,18 +295,91 @@ function startThread(){
   $("#storyBackLabel").textContent="Back";showView("story");
   $("#articleBody").innerHTML=`<div class="thread" id="threadMsgs"></div>`;
 }
-function appendUserBubble(text){
+function appendUserBubble(text,atts,ix){
   const t=$("#threadMsgs");if(!t)return;
   const el=document.createElement("div");el.className="msg-user anim-in";
-  el.innerHTML=`<div class="bubble">${esc(text)}</div>`;t.appendChild(el);
+  const imgs=(atts||[]).filter(a=>a.kind==="image"&&a.dataUrl).map(a=>`<img class="bubble-img" src="${a.dataUrl}" alt="${esc(a.name)}">`).join("");
+  const files=(atts||[]).filter(a=>a.kind!=="image"||!a.dataUrl).map(a=>`<span class="bubble-file">${icon("file","ic sm")} ${esc(a.name)}</span>`).join("");
+  el.innerHTML=`<div class="bubble">${imgs}${text?`<div>${esc(text)}</div>`:""}${files}</div>`;
+  t.appendChild(el);
+  if(typeof ix==="number")bindMsgLongPress(el,ix);
+}
+/* ---- long-press on your own messages (touch only): Edit / Copy / Delete ---- */
+function bindMsgLongPress(wrap,ix){
+  let timer=null;
+  const clear=()=>{if(timer){clearTimeout(timer);timer=null}};
+  wrap.addEventListener("pointerdown",e=>{
+    if(e.pointerType!=="touch"&&e.pointerType!=="pen")return;
+    clear();
+    timer=setTimeout(()=>{timer=null;openMsgActions(wrap,ix)},550);
+  });
+  ["pointerup","pointercancel","pointermove","pointerleave"].forEach(ev=>wrap.addEventListener(ev,clear));
+  wrap.addEventListener("contextmenu",e=>{if(e.pointerType==="touch")e.preventDefault()});
+}
+function openMsgActions(wrap,ix){
+  if(navigator.vibrate)try{navigator.vibrate(10)}catch(e){}
+  openMenu(wrap,el=>{
+    el.innerHTML=`
+     <button class="menu-item" data-m="edit">${icon("pen")}<span class="grow">Edit message</span></button>
+     <button class="menu-item" data-m="copy">${icon("copy")}<span class="grow">Copy</span></button>
+     <button class="menu-item" data-m="del">${icon("trash")}<span class="grow">Delete</span></button>`;
+    $("[data-m='edit']",el).addEventListener("click",()=>{closeMenu();editUserMsg(ix)});
+    $("[data-m='copy']",el).addEventListener("click",()=>{closeMenu();copyText((threadMsgs[ix]||{}).text||"","Message copied")});
+    $("[data-m='del']",el).addEventListener("click",()=>{closeMenu();deleteExchange(ix)});
+  },{width:230});
+}
+function rebuildHistory(){
+  chatHistory=threadMsgs.map(m=>m.role==="user"
+    ?{role:"user",content:m.text+((m.atts&&m.atts.length)?m.atts.map(a=>`\n[attached ${a.kind}: ${a.name}]`).join(""):"")}
+    :{role:"assistant",content:m.text});
+}
+function dropThreadDomFrom(ix){
+  const t=$("#threadMsgs");if(!t)return;
+  [...t.children].slice(ix).forEach(n=>n.remove());
+}
+function persistAfterThreadEdit(){
+  if(threadMsgs.some(m=>m.role==="ai"))saveCurrentThread();
+  else if(currentThreadId){state.threads=state.threads.filter(t=>t.id!==currentThreadId);syncRecentsFromThreads();save();renderRecents()}
+}
+function editUserMsg(ix){
+  const msg=threadMsgs[ix];if(!msg||msg.role!=="user")return;
+  const c=composers.find(x=>x.ctx==="followup")||composers[0];
+  threadMsgs=threadMsgs.slice(0,ix);rebuildHistory();dropThreadDomFrom(ix);persistAfterThreadEdit();
+  if(c){c.ta.value=msg.text;syncComposer(c);setTimeout(()=>c.ta.focus(),60)}
+  toast("Edit your message and resend");
+}
+function deleteExchange(ix){
+  if(!threadMsgs[ix])return;
+  let count=1;
+  if(threadMsgs[ix+1]&&threadMsgs[ix+1].role==="ai")count=2;
+  threadMsgs.splice(ix,count);rebuildHistory();
+  const t=$("#threadMsgs");
+  if(t){[...t.children].slice(ix,ix+count).forEach(n=>n.remove());rebindAllLongPress()}
+  persistAfterThreadEdit();toast("Deleted");
+}
+function rebindAllLongPress(){
+  const t=$("#threadMsgs");if(!t)return;
+  [...t.children].forEach((el,i)=>{
+    if(el.classList.contains("msg-user")){const clone=el.cloneNode(true);el.replaceWith(clone);bindMsgLongPress(clone,i)}
+  });
+}
+const RESEARCH_STEPS=[["book","Checking available tools"],["search","Reading the question"],["file","Writing the answer"]];
+function researchHtml(){
+  return `<div class="research"><button class="research-btn" disabled><span class="spinner"></span><span class="r-label">Researching…</span></button><div class="research-steps" hidden>${RESEARCH_STEPS.map(([ic,t])=>`<div class="r-step">${icon(ic,"ic sm")} ${t}</div>`).join("")}</div></div>`;
+}
+function finishResearch(wrap,secs){
+  const btn=$(".research-btn",wrap);if(!btn)return;
+  btn.disabled=false;
+  btn.innerHTML=`<span class="r-label">Researched ${secs}s</span>${icon("chevd","ic sm chev")}`;
+  btn.addEventListener("click",()=>{
+    const steps=$(".research-steps",wrap);if(!steps)return;
+    steps.hidden=!steps.hidden;btn.classList.toggle("open",!steps.hidden);
+  });
 }
 function appendAiBlock(modelKey){
   const t=$("#threadMsgs");if(!t)return null;
-  const meta=modelMeta(modelKey);
   const wrap=document.createElement("div");wrap.className="msg-ai anim-in";
-  wrap.innerHTML=`<div class="model-row"><img class="model-logo" src="${meta.logo}" alt=""> ${esc(meta.name)} <span class="live-dot">· Live AI answer</span></div>
-   <div class="search-status ai-status" style="margin-top:14px"><span class="spinner"></span> ${esc(meta.name)} is thinking…</div>
-   <div class="answer-md"></div><div class="ai-tools-slot"></div>`;
+  wrap.innerHTML=`${researchHtml()}<div class="answer-md"></div><div class="ai-tools-slot"></div>`;
   t.appendChild(wrap);return wrap;
 }
 function attachAiTools(wrap,raw,modelKey){
@@ -335,24 +417,55 @@ function attachAiTools(wrap,raw,modelKey){
 }
 function runAiTurn(modelKey){
   const wrap=appendAiBlock(modelKey);if(!wrap)return;
-  const bodyEl=$(".answer-md",wrap),statusEl=$(".ai-status",wrap);
-  streamAnswer(chatHistory,modelKey,bodyEl,statusEl,
-    raw=>{chatHistory.push({role:"assistant",content:raw});threadMsgs.push({role:"ai",text:raw,model:modelKey});attachAiTools(wrap,raw,modelKey);saveCurrentThread();scrollMainBottom()},
-    err=>{statusEl.className="";statusEl.innerHTML=`<div class="empty-state" style="margin-top:8px"><h3>Couldn't get an answer</h3><p>${esc(err.message||"Something went wrong.")}</p><button class="btn black" data-retry>Try again</button></div>`;
-      $("[data-retry]",statusEl).addEventListener("click",()=>{wrap.remove();runAiTurn(modelKey)})});
+  const bodyEl=$(".answer-md",wrap);
+  const t0=Date.now();
+  streamAnswer(chatHistory,modelKey,bodyEl,null,
+    raw=>{
+      const secs=Math.max(1,Math.round((Date.now()-t0)/1000));
+      chatHistory.push({role:"assistant",content:raw});
+      threadMsgs.push({role:"ai",text:raw,model:modelKey,secs});
+      finishResearch(wrap,secs);
+      attachAiTools(wrap,raw,modelKey);saveCurrentThread();scrollMainBottom();
+    },
+    err=>{
+      finishResearch(wrap,Math.max(1,Math.round((Date.now()-t0)/1000)));
+      bodyEl.innerHTML=`<div class="empty-state" style="margin-top:8px"><h3>Couldn't get an answer</h3><p>${esc(err.message||"Something went wrong.")}</p><button class="btn black" data-retry>Try again</button></div>`;
+      $("[data-retry]",bodyEl).addEventListener("click",()=>{wrap.remove();runAiTurn(modelKey)});
+    },
+    ()=>{const l=$(".r-label",wrap);if(l)l.textContent="Writing the answer…"});
 }
-function doSearch(q){
-  q=(q||"").trim();if(!q)return;
+function doSearch(q,atts){
+  q=(q||"").trim();atts=atts||[];
+  if(!q&&!atts.length)return;
+  if(!q)q="What's in this image?";
   if(!inChat||currentView!=="story"||!$("#threadMsgs"))startThread();
   if(!threadMsgs.some(m=>m.role==="user"))$("#storyBarTitle").textContent=q;
-  appendUserBubble(q);threadMsgs.push({role:"user",text:q});chatHistory.push({role:"user",content:q});
+  const ix=threadMsgs.length;
+  const savedAtts=atts.map(a=>({kind:a.kind,name:a.name,dataUrl:a.kind==="image"?a.dataUrl:undefined}));
+  appendUserBubble(q,atts,ix);
+  threadMsgs.push({role:"user",text:q,atts:atts.map(a=>({kind:a.kind,name:a.name}))});
+  // Build the API message: images as vision parts, text files inlined.
+  const images=atts.filter(a=>a.kind==="image"&&a.dataUrl);
+  const textFiles=atts.filter(a=>a.kind==="text");
+  let textContent=q;
+  textFiles.forEach(a=>{textContent+=`\n\n[File: ${a.name}]\n${a.text||""}`});
+  atts.filter(a=>a.kind==="file").forEach(a=>{textContent+=`\n[attached file: ${a.name}]`});
+  if(images.length){
+    chatHistory.push({role:"user",content:[{type:"text",text:textContent},...images.map(a=>({type:"image_url",image_url:{url:a.dataUrl}}))]});
+  } else {
+    chatHistory.push({role:"user",content:textContent});
+  }
   scrollMainBottom();runAiTurn(activeModel);
+  // After this turn, history keeps only a text note of the attachments (no re-sending image data).
+  const lastUser=[...chatHistory].reverse().find(m=>m.role==="user");
+  if(lastUser&&Array.isArray(lastUser.content))lastUser.content=textContent+images.map(a=>`\n[attached image: ${a.name}]`).join("");
+  void savedAtts;
 }
 function renderThreadMsgs(){
   $("#articleBody").innerHTML=`<div class="thread" id="threadMsgs"></div>`;
-  threadMsgs.forEach(m=>{
-    if(m.role==="user")appendUserBubble(m.text);
-    else{const wrap=appendAiBlock(m.model||"mistral");if(!wrap)return;const st=$(".ai-status",wrap);if(st)st.remove();$(".answer-md",wrap).innerHTML=mdToHtml(m.text);attachAiTools(wrap,m.text,m.model||"mistral")}
+  threadMsgs.forEach((m,ix)=>{
+    if(m.role==="user")appendUserBubble(m.text,m.atts||[],ix);
+    else{const wrap=appendAiBlock(m.model||"mistral");if(!wrap)return;$(".answer-md",wrap).innerHTML=mdToHtml(m.text);finishResearch(wrap,m.secs||2);attachAiTools(wrap,m.text,m.model||"mistral")}
   });
 }
 function openThread(id){
