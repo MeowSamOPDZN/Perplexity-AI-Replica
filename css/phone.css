@@ -131,3 +131,15 @@
   .voice-overlay h2 { font-size: 23px; margin-top: 36px; }
   [data-tip]:hover::after { display: none; } /* no hover tooltips on touch */
 }
+
+/* ---- round 3 additions: segmented changer, research line, bubbles ---- */
+@media (max-width: 860px) {
+  .seg-btn { height: 34px; padding: 0 10px; font-size: 12.5px; }
+  .composer-row { overflow-x: auto; scrollbar-width: none; }
+  .composer-row::-webkit-scrollbar { display: none; }
+  .composer-foot { padding: 0 2px; flex-wrap: wrap; }
+  .research-btn { font-size: 13px; }
+  .bubble-img { max-width: 170px; }
+  .msg-user .bubble { max-width: 86%; }
+  #view-story { min-height: 100%; }
+}
