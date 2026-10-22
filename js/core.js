@@ -1,5 +1,5 @@
 "use strict";
-/* ================= HELPERS ================= */
+// small helpers
 const $=(s,r=document)=>r.querySelector(s);
 const $$=(s,r=document)=>[...r.querySelectorAll(s)];
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -7,14 +7,14 @@ const icon=(n,cls="ic")=>`<svg class="${cls}" aria-hidden="true"><use href="#i-$
 function toast(msg){const t=document.createElement("div");t.className="toast";t.innerHTML=icon("check","ic sm")+esc(msg);$("#toasts").appendChild(t);setTimeout(()=>{t.style.opacity="0";t.style.transition="opacity .3s";setTimeout(()=>t.remove(),320)},2600)}
 async function copyText(txt,msg){try{await navigator.clipboard.writeText(txt)}catch(e){const ta=document.createElement("textarea");ta.value=txt;document.body.appendChild(ta);ta.select();try{document.execCommand("copy")}catch(_){}ta.remove()}toast(msg||"Copied to clipboard")}
 
-/* ================= STATE ================= */
+// state
 const LS_KEY="pplx_replica_v1";
 let state={user:null,plan:"Free",recents:[],projects:[],artifacts:[],automations:[],connected:{},cookie:null,likes:{},hiddenStories:[],interests:[],railDismissed:false,projFilter:"All projects",artType:"All types",connCat:"All categories"};
 try{const raw=localStorage.getItem(LS_KEY);if(raw)state={...state,...JSON.parse(raw)}}catch(e){}
 function save(){try{localStorage.setItem(LS_KEY,JSON.stringify(state))}catch(e){}}
 const signedIn=()=>!!state.user;
 
-/* ================= DATA ================= */
+/* data */
 const MODELS=[
  {key:"mistral",name:"Mistral Large",logo:"logos/mistral-ai-icon.svg",sub:"mistralai/mistral-large-4-0 · Real AI"},
  {key:"mnai",name:"MNAI 8 Pro",logo:"logos/mnai-ai-icon.svg",sub:"Flagship · Real AI"}];
@@ -60,7 +60,7 @@ const TEMPLATES=[
  {name:"Inbox summarizer",desc:"A nightly digest of the emails that actually need your attention, with drafts ready to send."},
  {name:"Price watch",desc:"Get alerted when tracked products or flights drop below your target price."}];
 
-/* ================= MENU SYSTEM ================= */
+// menus (one floating div, reused for everything)
 const menuRoot=$("#menuRoot");
 let menuAnchor=null;
 function closeMenu(){menuRoot.innerHTML="";menuAnchor=null}
@@ -81,7 +81,7 @@ $("#main").addEventListener("scroll",()=>closeMenu(),{passive:true});
 const lockTail=()=>`<span class="tail">${icon("lock","ic sm")}</span>`;
 const checkTail=()=>`<span class="tail"><svg class="menu-check"><use href="#i-check"/></svg></span>`;
 
-/* ================= MODAL SYSTEM ================= */
+// modals
 const modalRoot=$("#modalRoot");
 function closeModal(){modalRoot.innerHTML=""}
 function openModal(html,dialogCls=""){
@@ -96,7 +96,7 @@ function openModal(html,dialogCls=""){
 }
 const xBtn=`<button class="x" data-close aria-label="Close">${icon("x","ic sm")}</button>`;
 
-/* ================= AUTH (real Firebase — project meowsamopdzn-ais) ================= */
+// auth (firebase, project: meowsamopdzn-ais)
 const FB_CONFIG={apiKey:"AIzaSyA2JibgDeBwz-9rUVMFX1kW7lk0kJVIstE",authDomain:"meowsamopdzn-ais.firebaseapp.com",projectId:"meowsamopdzn-ais",storageBucket:"meowsamopdzn-ais.firebasestorage.app",messagingSenderId:"595814101069",appId:"1:595814101069:web:2d356073f8828261172c04",measurementId:"G-BR9PSL1JQ1"};
 let fbAuth=null;
 try{
@@ -176,7 +176,7 @@ function loginModal(variant="default"){
   $("#lgSso",ov).addEventListener("click",e=>{e.preventDefault();email.placeholder="Enter your work email for SSO";email.focus();toast("Enter your work email to continue with SSO")});
 }
 
-/* ================= PLANS ================= */
+/* plans */
 function plansModal(){
   const card=(name,cls,badge,credits,price,desc,items,btn,plan)=>`
    <div class="plan-card ${cls}">${badge?`<span class="badge" style="position:absolute;top:-11px;left:20px;background:var(--teal);color:#fff">${badge}</span>`:""}
@@ -205,7 +205,7 @@ function plansModal(){
   }));
 }
 
-/* ================= COMPOSER ================= */
+// composer
 const PLACEHOLDERS=["Ask anything…","Type / for search modes","Type @ for connectors"];
 let phIdx=0;
 const composers=[];
@@ -327,7 +327,7 @@ function renderAttach(c){
   $$("[data-att]",row).forEach(b=>b.addEventListener("click",()=>{c.attachments.splice(+b.dataset.att,1);renderAttach(c)}));
   syncComposer(c);
 }
-/* ---- attachment intake: picker, drag & drop, paste ---- */
+/* attachment intake: picker, drag & drop, paste */
 function readImageFile(f,cb){
   let settled=false;const done=att=>{if(!settled){settled=true;cb(att)}};
   const fallback=()=>{
@@ -372,7 +372,7 @@ function intakeFiles(c,files){
     c.attachments.push({kind:"file",name:f.name});renderAttach(c);
   });
 }
-/* ---- composer menus ---- */
+/* composer menus */
 function addMenu(c,anchor){
   openMenu(anchor,el=>{
     el.innerHTML=`
@@ -448,7 +448,7 @@ $("#filePicker").addEventListener("change",e=>{
   if(pendingComposer){const files=[...e.target.files];files.forEach(f=>{state.artifacts.unshift({name:f.name,type:"Documents",kind:"uploaded",when:"Just now"})});save();if(typeof renderArtifacts==="function")renderArtifacts();intakeFiles(pendingComposer,files);pendingComposer.ta.focus();pendingComposer=null}
   e.target.value="";
 });
-/* ---- dictation & voice ---- */
+/* dictation & voice */
 function dictate(c,btn){
   const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
   if(SR){
