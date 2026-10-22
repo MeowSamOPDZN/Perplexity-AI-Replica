@@ -1,5 +1,5 @@
 "use strict";
-/* ================= VIEW SWITCHING ================= */
+// view switching
 const VIEWS={home:"view-home",discover:"view-discover",story:"view-story",computer:"view-computer",automations:"view-automations",artifacts:"view-artifacts",customize:"view-customize"};
 let currentView="home",lastListView="discover";
 function showView(name){
@@ -25,7 +25,7 @@ function shareMenu(anchor){
   },{width:220,align:"right"});
 }
 
-/* ================= SIDEBAR ================= */
+/* sidebar */
 $("#logoLink").addEventListener("click",e=>{e.preventDefault();showView("home")});
 $("#collapseBtn").addEventListener("click",()=>{
   const rail=document.body.classList.toggle("rail");
@@ -87,7 +87,7 @@ $("#filterProjectsBtn").addEventListener("click",e=>{
   },{width:210});
 });
 
-/* ================= COMMAND PALETTE ================= */
+// cmd+k palette
 function openPalette(){
   const ov=openModal(`<input id="palInput" type="text" placeholder="Type a command or search" aria-label="Type a command or search">
    <div class="menu-head">Commands</div><div class="palette-list" id="palList"></div>`,"palette-dialog");
@@ -122,7 +122,7 @@ $("#bellBtn").addEventListener("click",e=>{
 });
 $("#railCompass").addEventListener("click",()=>showDiscover("Top"));
 
-/* ================= EDUCATION MODALS ================= */
+// the two 'learn more' cards popups
 $("#suggestSearch").addEventListener("click",()=>{
   const ov=openModal(`${xBtn}<h2>Get the most accurate answers from all of the top AI models</h2>
    <p class="sub">Perplexity searches the web and cites its sources – so you can trust what you read.</p>
@@ -147,7 +147,7 @@ $("#suggestComputer").addEventListener("click",()=>{
   $("#eduLogin2",ov).addEventListener("click",()=>loginModal("computer"));
 });
 
-/* ================= DISCOVER ================= */
+/* discover */
 let discTopic="Top",weatherUnit="C";
 const favi=(ix,sz)=>{const[o,c,l]=OUTLETS[ix%OUTLETS.length];return `<span class="favi" style="background:${c};${sz?`width:${sz}px;height:${sz}px`:""}" title="${o}">${l}</span>`};
 const faviStack=idxs=>`<span class="favi-stack">${idxs.map(i=>favi(i)).join("")}</span>`;
@@ -228,7 +228,7 @@ $("#dtabTopics").addEventListener("click",e=>{
 $("#dtabTop").addEventListener("click",()=>showDiscover("Top"));
 $("#discShareBtn").addEventListener("click",e=>shareMenu(e.currentTarget));
 
-/* ================= STORY / ANSWER ================= */
+/* story page */
 let currentBack="discover";
 function citeHTML(ix,plus){const[o]=OUTLETS[ix%OUTLETS.length];return `<span class="cite" data-cite="${o}">${favi(ix)} ${o}${plus?" +1":""}</span>`}
 function secToolsHTML(sources,secIx){
@@ -274,7 +274,7 @@ function openStory(s){
 }
 $("#storyBack").addEventListener("click",()=>{if(inChat){inChat=false;showView("home")}else if(currentBack==="discover")showDiscover(discTopic);else showView("home")});
 $("#storyShareBtn").addEventListener("click",e=>shareMenu(e.currentTarget));
-/* ================= CHAT THREADS ================= */
+// chat threads -- the actual conversation view
 if(!Array.isArray(state.threads))state.threads=[];
 let inChat=false,currentThreadId=null,threadMsgs=[];
 function resetThreadState(){inChat=false;currentThreadId=null;threadMsgs=[];resetChat()}
@@ -304,7 +304,7 @@ function appendUserBubble(text,atts,ix){
   t.appendChild(el);
   if(typeof ix==="number")bindMsgLongPress(el,ix);
 }
-/* ---- long-press on your own messages (touch only): Edit / Copy / Delete ---- */
+/* long-press on your own messages (touch only): Edit / Copy / Delete */
 function bindMsgLongPress(wrap,ix){
   let timer=null;
   const clear=()=>{if(timer){clearTimeout(timer);timer=null}};
@@ -504,7 +504,7 @@ function deleteCurrentThread(){
   resetThreadState();showView("home");toast("Thread deleted");
 }
 
-/* ================= COMPUTER ================= */
+// computer
 function doComputerSession(q,standard){
   if(!requireAuth("computer"))return;
   const list=$("#sessionList");
@@ -520,7 +520,7 @@ function doComputerSession(q,standard){
   },2400);
 }
 
-/* ================= AUTOMATIONS ================= */
+/* automations */
 function renderAutomations(){
   const list=$("#automationList");
   list.innerHTML=state.automations.map((a,i)=>`<div class="session-card anim-in"><div class="s-head">${icon("auto")}<span>${esc(a.name)}</span><span class="status-pill ${a.paused?"working":""}">${a.paused?"Paused":"Active"}</span></div>
@@ -547,7 +547,7 @@ $("#createAutomationBtn").addEventListener("click",()=>openAutomationModal());
 $("#templateGrid").innerHTML=TEMPLATES.map((t,i)=>`<button class="template-card" data-tpl="${i}"><h4>${icon("auto","ic sm")} ${esc(t.name)}</h4><p>${esc(t.desc)}</p></button>`).join("");
 $$("[data-tpl]").forEach(b=>b.addEventListener("click",()=>{const t=TEMPLATES[+b.dataset.tpl];openAutomationModal({name:t.name,prompt:t.desc})}));
 
-/* ================= ARTIFACTS ================= */
+// artifacts
 let artTab="all",artView="grid";
 function renderArtifacts(){
   const grid=$("#artifactGrid"),q=($("#artifactSearch").value||"").toLowerCase();
@@ -580,7 +580,7 @@ function openArtifactModal(){
 }
 $("#createArtifactBtn").addEventListener("click",()=>{requireAuth("artifacts")&&openArtifactModal()});
 
-/* ================= CONNECTORS ================= */
+// connectors
 let connTab="connectors",connScope="Discover";
 function renderConnectors(){
   const q=($("#connSearch").value||"").toLowerCase();
@@ -611,7 +611,7 @@ $("#connCatBtn").addEventListener("click",e=>{
   },{width:210});
 });
 
-/* ================= INCOGNITO ================= */
+// incognito
 function toggleIncognito(force){
   const on=force!==undefined?force:document.body.classList.toggle("incognito");
   if(force!==undefined)document.body.classList.toggle("incognito",on);
@@ -623,12 +623,12 @@ function toggleIncognito(force){
 }
 $("#incognitoBtn").addEventListener("click",()=>toggleIncognito());
 
-/* ================= COOKIE ================= */
+// cookie
 if(!state.cookie)setTimeout(()=>{$("#cookieBanner").hidden=false},700);else $("#cookieBanner").hidden=true;
 $("#cookieAccept").addEventListener("click",()=>{state.cookie="accepted";save();$("#cookieBanner").hidden=true;toast("Thanks — cookie choice saved")});
 $("#cookieDecline").addEventListener("click",()=>{state.cookie="declined";save();$("#cookieBanner").hidden=true;toast("Optional cookies declined")});
 
-/* ================= KEYBOARD ================= */
+/* keyboard */
 document.addEventListener("keydown",e=>{
   const mod=e.ctrlKey||e.metaKey;
   if(mod&&e.key.toLowerCase()==="k"){e.preventDefault();openPalette()}
@@ -636,7 +636,7 @@ document.addEventListener("keydown",e=>{
   else if(e.ctrlKey&&e.key===";"){e.preventDefault();toggleIncognito()}
 });
 
-/* ================= INIT ================= */
+// init
 buildComposers();
 updateModelUI();
 updateAuthUI();
@@ -648,7 +648,7 @@ renderConnectors();
 renderDiscover();
 showView("home");
 
-/* ================= MOBILE BAR / TABS ================= */
+// mobile top bar + bottom tabs
 $("#mLogo").addEventListener("click",e=>{e.preventDefault();showView("home")});
 $("#mPaletteBtn").addEventListener("click",openPalette);
 $("#mIncognitoBtn").addEventListener("click",()=>toggleIncognito());
