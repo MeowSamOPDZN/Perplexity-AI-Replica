@@ -1,7 +1,6 @@
-// Perplexity AI Replica — real AI proxy with model routing.
-// Browser -> /api/chat -> xKiro (OpenAI-compatible). Key ONLY in XKIRO_API_KEY env var.
-// Models exposed to the client: "mistral" (Mistral Large) and "mnai" (MNAI 8 Pro).
-// Upstream ids live ONLY here, server-side.
+// /api/chat — the proxy. browser talks to this, this talks to xkiro.
+// the api key stays in the XKIRO_API_KEY env var, never in client code.
+// client only ever sees two model ids: "mistral" and "mnai".
 const UPSTREAM = "https://api.xkiro.com/v1/chat/completions";
 const CHROME_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36";
 
@@ -40,12 +39,9 @@ const MODEL_MAP = {
   mnai: { upstream: "qwen/qwen3.8-omni-flash:free", system: MNAI_SYSTEM, passthrough: false },
 };
 
-/* ---- MNAI identity fast-path (same approach as the real MNAI: trained identity
-   questions are answered by a dedicated rotating path, not left to the model).
-   STRICT on purpose: it fires ONLY when the whole message is the identity
-   question itself. A message that merely mentions the website/dashboard inside
-   a bigger question (e.g. "can u generate images on the official website?")
-   goes to the model, which answers the real question using its knowledge. ---- */
+/* identity fast-path: pure identity questions ("who made you?" etc) get a
+   trained answer straight away. keep the regexes strict — if the message is
+   a bigger question that just mentions the website, it goes to the model. */
 const IDENTITY = [
   { re: /^(what('s| is) this (web)?site|what is this page|where am i|what('s| is) perplexity[\s-]?replica(\.vercel\.app)?|is perplexity[\s-]?replica(\.vercel\.app)? (your|an) official (web)?site|who (made|created|built) (this (web)?site|perplexity[\s-]?replica))[?.!\s]*$/i,
     answers: [
