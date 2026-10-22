@@ -1,13 +1,9 @@
-/* ==========================================================================
-   Perplexity AI Replica — PHONE CSS
-   App-style mobile layout modeled on the Perplexity mobile app:
-   fixed top app bar, bottom tab bar with a raised center "New" button,
-   bottom-sheet menus and dialogs, single-column feed, sticky follow-up bar.
-   Loaded only on small screens (link media="(max-width: 860px)").
-   ========================================================================== */
+/* phone layout — app-style: top bar, bottom tabs with the raised
+   new button in the middle, sheets instead of dropdowns.
+   only loads under 860px, main.css handles desktop */
 @media (max-width: 860px) {
 
-  /* ---- chrome: hide desktop sidebar, show app bar + tab bar ---- */
+  /* chrome: hide desktop sidebar, show app bar + tab bar */
   #sidebar { display: none !important; }
   #mobileBar {
     display: flex; align-items: center; gap: 2px;
@@ -40,13 +36,13 @@
   }
   .mtab-plus .ic { width: 20px; height: 20px; }
 
-  /* ---- main column ---- */
+  /* main column */
   #main { padding-top: 54px; padding-bottom: 74px; }
   .top-actions { display: none; }
   .wrap { padding: 0 16px; }
   .wrap-wide { padding: 0 16px; }
 
-  /* ---- home ---- */
+  /* home */
   .hero { padding-top: 5vh; }
   .hero h1 { font-size: 29px; margin: 12px 0 22px; }
   .hero-logo svg { width: 34px; height: 34px; }
@@ -54,14 +50,14 @@
   .suggest-grid { grid-template-columns: 1fr; margin-top: 18px; }
   .incognito-sub { font-size: 13.5px; }
 
-  /* ---- composer (app-style rounded sheet) ---- */
+  /* composer (app-style rounded sheet) */
   .composer { border-radius: 20px; padding: 12px 12px 8px; }
   .composer textarea { font-size: 16px; } /* prevents iOS focus zoom */
   .composer-row { gap: 2px; }
   .composer-row .cbtn { height: 36px; }
   .voice-btn, .submit-btn { width: 36px; height: 36px; }
 
-  /* ---- menus become bottom sheets (JS positions inline, overridden here) ---- */
+  /* menus become bottom sheets (JS positions inline, overridden here) */
   #menu {
     left: 10px !important; right: 10px; top: auto !important; bottom: 84px;
     width: auto !important; min-width: 0 !important; max-width: none;
@@ -71,7 +67,7 @@
   @keyframes sheetUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
   .menu-item { padding: 11px 12px; font-size: 14.5px; border-radius: 12px; }
 
-  /* ---- dialogs become bottom sheets ---- */
+  /* dialogs become bottom sheets */
   .overlay { align-items: flex-end; padding: 0; }
   .dialog { border-radius: 22px 22px 0 0; max-height: 94vh; width: 100%; animation: sheetUp .24s ease both; }
   .login-dialog, .edu-dialog, .form-dialog { padding: 24px 20px calc(20px + env(safe-area-inset-bottom)); }
@@ -81,7 +77,7 @@
   .palette-dialog { border-radius: 22px 22px 0 0; }
   .edu-panels { grid-template-columns: 1fr; }
 
-  /* ---- discover ---- */
+  /* discover */
   .disc-head { padding: 14px 0 4px; }
   .disc-tabs { overflow-x: auto; scrollbar-width: none; }
   .disc-tabs::-webkit-scrollbar { display: none; }
@@ -95,7 +91,7 @@
   .rail { position: static; margin-top: 10px; }
   .market-row { grid-template-columns: 1fr 1fr; }
 
-  /* ---- story / answer ---- */
+  /* story / answer */
   .topbar { padding: 9px 10px; gap: 4px; }
   .topbar .tb-title { font-size: 12.5px; }
   .back-btn { padding: 7px 8px; }
@@ -111,7 +107,7 @@
   .answer-md h3 { font-size: 20px; }
   .followup-bar { bottom: 66px; padding: 10px 10px 12px; }
 
-  /* ---- pages (Computer / Automations / Artifacts / Customize) ---- */
+  /* pages (Computer / Automations / Artifacts / Customize) */
   .page { padding: 4vh 16px 40px; }
   .page h1.p-title { font-size: 26px; }
   .page .p-sub { font-size: 14px; }
@@ -123,7 +119,7 @@
   .ftab { white-space: nowrap; }
   .empty-state { padding: 36px 16px; }
 
-  /* ---- floating bits ---- */
+  /* floating bits */
   .cookie { left: 12px; right: 12px; bottom: 84px; max-width: none; }
   #toasts { bottom: 92px; width: max-content; max-width: 92vw; }
   .toast { font-size: 13px; text-align: center; }
@@ -132,7 +128,7 @@
   [data-tip]:hover::after { display: none; } /* no hover tooltips on touch */
 }
 
-/* ---- round 3 additions: segmented changer, research line, bubbles ---- */
+/* round 3 additions: segmented changer, research line, bubbles */
 @media (max-width: 860px) {
   .seg-btn { height: 34px; padding: 0 10px; font-size: 12.5px; }
   .composer-row { overflow-x: auto; scrollbar-width: none; }
