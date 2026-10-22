@@ -1,9 +1,9 @@
 "use strict";
-/* ================= REAL AI (via /api/chat) ================= */
+// talking to the ai — everything goes through /api/chat
 let chatHistory = [];
 function resetChat() { chatHistory = []; }
 
-/* Active model: "mistral" (Mistral Large) or "mnai" (MNAI 8 Pro) */
+// which model is picked right now — "mistral" or "mnai"
 let activeModel = "mistral";
 try { const saved = localStorage.getItem("pplx_model"); if (saved && MODELS.some(m => m.key === saved)) activeModel = saved; } catch (e) {}
 function setActiveModel(key) {
@@ -56,7 +56,7 @@ function mdToHtml(md) {
   return html;
 }
 
-/* Streams an answer from /api/chat into bodyEl; hides statusEl on first token. */
+// stream the answer into bodyEl, hide the "thinking" bit on first token
 async function streamAnswer(messages, modelKey, bodyEl, statusEl, onDone, onError, onFirstToken) {
   try {
     const res = await fetch("/api/chat", {
